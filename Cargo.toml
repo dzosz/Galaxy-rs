@@ -1,0 +1,24 @@
+[package]
+name = "Galaxy-rs"
+version = "0.0.1"
+authors = ["Anonymous", "DinoZ1729"]
+edition = "2018"
+description = "rust rewrite of three body ascii rendering project originally hosted by DinoZ1729"
+license = "GPL-3.0"
+
+[dependencies]
+terminal_size = "0.1.17"
+nalgebra = "0.27.1"
+rand = "0.8.4"
+
+[[bin]]
+name = "sun_earth_moon"
+path = "bin/Sun-Earth-Moon.rs"
+
+[[bin]]
+name = "collision"
+path = "bin/Collision.rs"
+
+[[bin]]
+name = "threebody"
+path = "bin/ThreeBody.rs"
