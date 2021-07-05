@@ -83,11 +83,11 @@ impl Screen {
     }
 
     pub fn Draw(&mut self) {
-        let mut frame = [['x'; WIDTH / dW + 1]; HEIGHT/dH];
+        let mut frame = [['x' as u8; WIDTH / dW + 1]; HEIGHT/dH];
         for i in 0..HEIGHT/dH -1 {
-            frame[i][WIDTH/dW] = '\n';
+            frame[i][WIDTH/dW] = '\n' as u8;
         }
-        frame[HEIGHT / dH - 1][WIDTH/dW] = '\0';
+        frame[HEIGHT / dH - 1][WIDTH/dW] = '\0' as u8;
         let mut countMax = 0;
 
         for i in 0..HEIGHT/dH {
@@ -108,12 +108,12 @@ impl Screen {
         
         // borders
         for i in 0..HEIGHT/dH {
-            frame[i][0] = '@';
-            frame[i][WIDTH/dW - 1] = '@';
+            frame[i][0] = '@' as u8;
+            frame[i][WIDTH/dW - 1] = '@' as u8;
         }
         for j in 0..WIDTH/dW {
-            frame[0][j] = '@';
-            frame[HEIGHT/dH-1][j] = '@';
+            frame[0][j] = '@' as u8;
+            frame[HEIGHT/dH-1][j] = '@' as u8;
         }
         self.FillScreenWithString(&frame);
         //print!("cmax {}",countMax);
@@ -255,30 +255,26 @@ impl Screen {
         }
     }
 
-    fn brightness(&self, count : usize) -> char {
+    fn brightness(&self, count : usize) -> u8 {
         let p : &'static [(usize, &str); 3]= &[(10, " .,:;oOQ#@"), (10, "     .oO@@"), (3, " .:")];
 
         if 0 <= self._palette  && self._palette <=2 {
             let ref pal = p[self._palette as usize];
-            pal.1.as_bytes()[count * (pal.0 - 1) / dW / dH] as char
+            pal.1.as_bytes()[count * (pal.0 - 1) / dW / dH]
         } else {
-            ' '
+            ' ' as u8
         }
     }
-    fn FillScreenWithString(&mut self, frame : &[[char; WIDTH/dW + 1]; HEIGHT/dH]) {
+    fn FillScreenWithString(&mut self, frame : &[[u8; WIDTH/dW + 1]; HEIGHT/dH]) {
         let mut out = io::stdout();
         let lineheight = unsafe {std::cmp::min(termHeight as usize, HEIGHT/dH) };
         let mut go_to_line_ansi_esacpe_code = String::new();
         let linewidth = unsafe { std::cmp::min(termWidth, WIDTH / dW +1) };
-        let mut buf : String;
 
         for line_idx in 0..lineheight {
             go_to_line_ansi_esacpe_code = format!("{esc}[{};1H", line_idx, esc=27 as char);
             out.write_all(go_to_line_ansi_esacpe_code.as_bytes());
-            buf = frame[line_idx].iter().take(linewidth).collect();
-            //let slice = std::slice::from_raw_parts(frame[line_idx].as_ptr() as *const u8, linewidth);
-            out.write_all(buf.as_bytes());
-            //let x = std::str::from_utf8(&frame[line_idx][..]).unwrap();
+            out.write_all(&frame[line_idx]);
         }
         out.flush();
     }
