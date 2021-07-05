@@ -1,117 +1,83 @@
+mod body;
 mod screen;
 
+use body::*;
 use screen::Screen;
 
 type Vec2 = nalgebra::Vector2<f32>;
 
-struct Body
-{
-	r : f32,
-	m : f32,
-	pos : Vec2,
-	vel : Vec2,
-	acc : Vec2,
+struct SunEarthMoon {
+    scr: Screen,
+    Sun: Body,
+    Earth: Body,
+    Moon: Body,
+    G: f32,
 }
 
-impl Body {
-    /*
-	fn new() -> Body {
-        Body {
-            r:0.2,
-            m:1.0,
-            pos: Vec2::new(0.0, 0.0),
-            vel: Vec2::new(0.0, 0.0),
-            acc: Vec2::new(0.0, 0.0)
-        }
-    }
-	
-    
-    fn new(m : f32) -> Body {
-        Body {
-            r:0.2 * m.cbrt(),
-            m:m,
-            pos:Vec2::new(0.0, 0.0),
-            vel:Vec2::new(0.0, 0.0),
-            acc:Vec2::new(0.0, 0.0)
-        }
-    }
-    */
+impl SunEarthMoon {
+    fn new() -> SunEarthMoon {
+        let mut obj = SunEarthMoon {
+            scr: Screen::new(0.0, 0.0, 5.0),
+            Sun: Body::new(10000.0, 7.0),
+            Earth: Body::new(1000.0, 2.0),
+            Moon: Body::new(1.0, 1.2),
+            G: 1.0,
+        };
 
-	fn new(m : f32, r : f32) -> Body {
-        Body {
-            r:r,
-            m:m,
-            pos:Vec2::new(0.0, 0.0),
-            vel:Vec2::new(0.0, 0.0),
-            acc:Vec2::new(0.0, 0.0)
-        }
-	}
-	
-	fn setPos(&mut self, x : f32,y : f32) {
-		self.pos.x=x;
-		self.pos.y=y;
-	}
-	
-    fn PulledBy(&mut self, other : &Self) {
-		let G : f32=1.0;
-		let dist = (self.pos-other.pos).dot(&(self.pos-other.pos)).sqrt();
-		self.acc += G*other.m*(other.pos-self.pos) / dist/dist/dist;
-	}
-	
-	fn Update(&mut self, dt : f32) {
-		self.vel+=dt*self.acc;
-		self.pos+=dt*self.vel;
-		self.acc=Vec2::new(0.0, 0.0);
-	}
+        let r = 5.5;
+        let R = 30.0;
+
+        obj.Sun.pos = Vec2::new(0.0, 0.0);
+        obj.Sun.vel = Vec2::new(0.0, 0.0);
+
+        obj.Earth.pos = Vec2::new(R, 0.0);
+        obj.Earth.vel = Vec2::new(0.0, (obj.Sun.m / R).sqrt());
+
+        obj.Moon.pos = Vec2::new(R, r);
+        obj.Moon.vel = Vec2::new((obj.Earth.m / r).sqrt(), obj.Earth.vel.y);
+
+        obj
+    }
+
+    fn plot_body(&mut self, body: Body) {
+        // TODO how to get mutable reference to body here?
+        self.scr.PlotCircle(body.pos.x, body.pos.y, body.r);
+    }
 }
+impl Scenario for SunEarthMoon {
+    fn process(&mut self, dt: f32) {
+        self.Moon.PulledBy(&self.Earth, self.G);
+        self.Moon.PulledBy(&self.Sun, self.G);
+        self.Earth.PulledBy(&self.Moon, self.G);
+        self.Earth.PulledBy(&self.Sun, self.G);
+        self.Sun.PulledBy(&self.Moon, self.G);
+        self.Sun.PulledBy(&self.Earth, self.G);
 
-fn Plot(body : &Body, scr : &mut Screen)
-{
-	scr.PlotCircle(body.pos.x,body.pos.y,body.r);
+        self.Moon.Update(dt);
+        self.Earth.Update(dt);
+        self.Sun.Update(dt);
+    }
+
+    fn draw(&mut self) {
+        self.scr.Clear();
+        self.scr.Position(self.Sun.pos.x, self.Sun.pos.y);
+
+        self.plot_body(self.Moon);
+        self.plot_body(self.Earth);
+        self.plot_body(self.Sun);
+
+        self.scr.Draw();
+    }
 }
 
 fn main() {
-	let mut scr = Screen::new(0.0,0.0,10.0);
-	
-	let dt=1.0/100.0;
-	let r=5.5;
-    let R=30.0;
-	
-	let mut Sun = Body::new(10000.0,7.0);
-	let mut Earth = Body::new(1000.0,2.0);
-	let mut Moon = Body::new(1.0,1.2);
-	
-	Sun.pos=Vec2::new(0.0,0.0);
-	Sun.vel=Vec2::new(0.0,0.0);
-	
-	Earth.pos=Vec2::new(R,0.0);
-	Earth.vel=Vec2::new(0.0,(Sun.m/R).sqrt());
-	
-	Moon.pos=Vec2::new(R,r);
-	Moon.vel=Vec2::new((Earth.m/r).sqrt(),Earth.vel.y);
-	
-	loop {
-		scr.Clear();
-		
-		Moon.PulledBy(&Earth);
-		Moon.PulledBy(&Sun);
-		Earth.PulledBy(&Moon);
-		Earth.PulledBy(&Sun);
-		Sun.PulledBy(&Moon);
-		Sun.PulledBy(&Earth);
-		
-		Moon.Update(dt);
-		Earth.Update(dt);
-		Sun.Update(dt);
-		
-		scr.Position(Sun.pos.x,Sun.pos.y);
-		
-		Plot(&Moon, &mut scr);
-		Plot(&Earth,&mut scr);
-		Plot(&Sun,  &mut scr);
-		
-		scr.Draw();
+    let mut scenario = SunEarthMoon::new();
+
+    let dt = 1.0 / 100.0;
+    loop {
+        scenario.process(dt);
+        scenario.draw();
         //use std::{thread, time};
         //thread::sleep(time::Duration::from_millis(1000));
-	}
+    }
 }
