@@ -116,17 +116,6 @@ impl Screen {
             frame[HEIGHT/dH-1][j] = '@' as u8;
         }
         self.FillScreenWithString(&frame);
-        //print!("cmax {}",countMax);
-        let canvssum = { 
-            let mut s = 0;
-            for i in 0..HEIGHT {
-                for j in 0..WIDTH {
-                    s += self.canvas[i][j] as usize;
-                }
-            }
-            s
-        };
-        //println!(" canvas {}", canvssum);
     }
 
     pub fn Height() -> usize {
