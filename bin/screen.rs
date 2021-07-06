@@ -7,7 +7,21 @@ const dH : usize= 8;
 static mut termWidth : usize = 80;
 static mut termHeight : usize = 24;
 
-pub struct Screen {
+
+pub trait Screen
+{
+    fn Clear(&mut self);
+    fn PlotPoint(&mut self, x : f32, y :f32);
+    fn PlotLine(&mut self, x1 : f32, y1 :f32, x2 : f32, y2 : f32);
+    fn PlotCircle(&mut self, x : f32, y: f32, r: f32);
+    fn PlotRectangle(&mut self, x1 : f32, y1 :f32, x2 : f32, y2 : f32);
+    fn Position(&mut self, x : f32, y : f32);
+    fn Zoom(&mut self, zoom : f32);
+    fn Draw(&mut self);
+    fn set_palette(&mut self, palette : i32);
+}
+
+pub struct TerminalScreen {
     canvas : [[bool; WIDTH]; HEIGHT],
     x : f32,
     y : f32,
@@ -15,119 +29,35 @@ pub struct Screen {
     _palette : i32,
 }
 
-impl Screen {
-    pub fn new(x : f32, y : f32, z : f32) -> Screen {
-        let mut obj = Screen { canvas : [[false; WIDTH]; HEIGHT], x : x, y: y, zoom: z, _palette : 0 };
+impl TerminalScreen {
+    pub fn new(x : f32, y : f32, z : f32) -> TerminalScreen {
+        let mut obj = TerminalScreen { canvas : [[false; WIDTH]; HEIGHT], x : x, y: y, zoom: z, _palette : 0 };
         obj.Setup();
         obj.Clear();
         obj
     }
+    fn brightness(&self, count : usize) -> u8 {
+        let p : &'static [(usize, &str); 3]= &[(10, " .,:;oOQ#@"), (10, "     .oO@@"), (3, " .:")];
 
-    pub fn Clear(&mut self) {
-        for i in 0..HEIGHT {
-            for j in 0..WIDTH {
-                self.canvas[i][j] = false;
-            }
+        if 0 <= self._palette  && self._palette <=2 {
+            let ref pal = p[self._palette as usize];
+            pal.1.as_bytes()[count * (pal.0 - 1) / dW / dH]
+        } else {
+            ' ' as u8
         }
     }
+    fn FillScreenWithString(&mut self, frame : &[[u8; WIDTH/dW + 1]; HEIGHT/dH]) {
+        let mut out = io::stdout();
+        let lineheight = unsafe {std::cmp::min(termHeight as usize, HEIGHT/dH) };
+        let mut go_to_line_ansi_esacpe_code = String::new();
+        let linewidth = unsafe { std::cmp::min(termWidth, WIDTH / dW +1) };
 
-    pub fn PlotPoint(&mut self, x : f32, y :f32) {
-        let mut pos = [0; 2];
-        self.transform(&mut pos, x, y);
-        self.drawPoint(pos[0] as usize, pos[1] as usize);
-    }
-
-    pub fn PlotLine(&mut self, x1 : f32, y1 :f32, x2 : f32, y2 : f32) {
-        let mut pos1 = [0; 2];
-        let mut pos2 = [0; 2];
-        self.transform(&mut pos1, x1, y1);
-        self.transform(&mut pos2, x2, y2);
-        self.drawLine(pos1[0] as usize, pos1[1] as usize, pos2[0] as usize, pos2[1] as usize);
-    }
-
-    pub fn PlotCircle(&mut self, x : f32, y: f32, r: f32) {
-        let mut p1 = [0; 2];
-        let mut p2 = [0; 2];
-
-        self.transform(&mut p1, x - r, y + r);
-        self.transform(&mut p2, x + r, y - r);
-
-        for i in p1[0]..=p2[0] {
-            for j in p1[1]..=p2[1] {
-                let xt = (j as f32 - WIDTH as f32/2.0) / self.zoom + self.x as f32;
-                let yt = (HEIGHT as f32/2.0 - 1.0 - i as f32) / self.zoom + self.y as f32;
-                let radius2 = (xt-x) * (xt-x) + (yt - y) * (yt - y);
-                if radius2 <= r*r {
-                    self.drawPoint(i as usize, j as usize);
-                }
-            }
+        for line_idx in 0..lineheight {
+            go_to_line_ansi_esacpe_code = format!("{esc}[{};1H", line_idx, esc=27 as char);
+            out.write_all(go_to_line_ansi_esacpe_code.as_bytes());
+            out.write_all(&frame[line_idx]);
         }
-    }
-
-    pub fn PlotRectangle(&mut self, x1 : f32, y1 :f32, x2 : f32, y2 : f32) {
-        let mut p1 = [0; 2];
-        let mut p2 = [0; 2];
-
-        self.transform(&mut p1, x1, y1);
-        self.transform(&mut p2, x2, y2);
-        self.drawRectangle(p1[0], p1[1], p2[0], p2[1]);
-    }
-
-    pub fn Position(&mut self, x : f32, y : f32) {
-        self.x = x;
-        self.y = y;
-    }
-
-    pub fn Zoom(&mut self, zoom : f32) {
-        self.zoom = zoom;
-    }
-
-    pub fn Draw(&mut self) {
-        let mut frame = [['x' as u8; WIDTH / dW + 1]; HEIGHT/dH];
-        for i in 0..HEIGHT/dH -1 {
-            frame[i][WIDTH/dW] = '\n' as u8;
-        }
-        frame[HEIGHT / dH - 1][WIDTH/dW] = '\0' as u8;
-        let mut countMax = 0;
-
-        for i in 0..HEIGHT/dH {
-            for j in 0..WIDTH/dW {
-                let mut count = 0;
-
-                // calculating brightness
-                for k in 0..dH {
-                    for l in 0 ..dW {
-                        count += self.canvas[dH * i + k][dW * j + l] as usize;
-                    }
-                }
-
-                frame[i][j] = self.brightness(count);
-                countMax = std::cmp::max(count, countMax);
-            }
-        }
-        
-        // borders
-        for i in 0..HEIGHT/dH {
-            frame[i][0] = '@' as u8;
-            frame[i][WIDTH/dW - 1] = '@' as u8;
-        }
-        for j in 0..WIDTH/dW {
-            frame[0][j] = '@' as u8;
-            frame[HEIGHT/dH-1][j] = '@' as u8;
-        }
-        self.FillScreenWithString(&frame);
-    }
-
-    pub fn Height() -> usize {
-        HEIGHT
-    }
-
-    pub fn Width() -> usize {
-        WIDTH
-    }
-
-    pub fn set_palette(&mut self, palette : i32) {
-        self._palette = palette;
+        out.flush();
     }
 
     fn Setup(&mut self) {
@@ -244,27 +174,105 @@ impl Screen {
         }
     }
 
-    fn brightness(&self, count : usize) -> u8 {
-        let p : &'static [(usize, &str); 3]= &[(10, " .,:;oOQ#@"), (10, "     .oO@@"), (3, " .:")];
-
-        if 0 <= self._palette  && self._palette <=2 {
-            let ref pal = p[self._palette as usize];
-            pal.1.as_bytes()[count * (pal.0 - 1) / dW / dH]
-        } else {
-            ' ' as u8
+}
+impl Screen for TerminalScreen {
+    fn Clear(&mut self) {
+        for i in 0..HEIGHT {
+            for j in 0..WIDTH {
+                self.canvas[i][j] = false;
+            }
         }
     }
-    fn FillScreenWithString(&mut self, frame : &[[u8; WIDTH/dW + 1]; HEIGHT/dH]) {
-        let mut out = io::stdout();
-        let lineheight = unsafe {std::cmp::min(termHeight as usize, HEIGHT/dH) };
-        let mut go_to_line_ansi_esacpe_code = String::new();
-        let linewidth = unsafe { std::cmp::min(termWidth, WIDTH / dW +1) };
 
-        for line_idx in 0..lineheight {
-            go_to_line_ansi_esacpe_code = format!("{esc}[{};1H", line_idx, esc=27 as char);
-            out.write_all(go_to_line_ansi_esacpe_code.as_bytes());
-            out.write_all(&frame[line_idx]);
-        }
-        out.flush();
+    fn PlotPoint(&mut self, x : f32, y :f32) {
+        let mut pos = [0; 2];
+        self.transform(&mut pos, x, y);
+        self.drawPoint(pos[0] as usize, pos[1] as usize);
     }
+
+    fn PlotLine(&mut self, x1 : f32, y1 :f32, x2 : f32, y2 : f32) {
+        let mut pos1 = [0; 2];
+        let mut pos2 = [0; 2];
+        self.transform(&mut pos1, x1, y1);
+        self.transform(&mut pos2, x2, y2);
+        self.drawLine(pos1[0] as usize, pos1[1] as usize, pos2[0] as usize, pos2[1] as usize);
+    }
+
+    fn PlotCircle(&mut self, x : f32, y: f32, r: f32) {
+        let mut p1 = [0; 2];
+        let mut p2 = [0; 2];
+
+        self.transform(&mut p1, x - r, y + r);
+        self.transform(&mut p2, x + r, y - r);
+
+        for i in p1[0]..=p2[0] {
+            for j in p1[1]..=p2[1] {
+                let xt = (j as f32 - WIDTH as f32/2.0) / self.zoom + self.x as f32;
+                let yt = (HEIGHT as f32/2.0 - 1.0 - i as f32) / self.zoom + self.y as f32;
+                let radius2 = (xt-x) * (xt-x) + (yt - y) * (yt - y);
+                if radius2 <= r*r {
+                    self.drawPoint(i as usize, j as usize);
+                }
+            }
+        }
+    }
+
+    fn PlotRectangle(&mut self, x1 : f32, y1 :f32, x2 : f32, y2 : f32) {
+        let mut p1 = [0; 2];
+        let mut p2 = [0; 2];
+
+        self.transform(&mut p1, x1, y1);
+        self.transform(&mut p2, x2, y2);
+        self.drawRectangle(p1[0], p1[1], p2[0], p2[1]);
+    }
+
+    fn Position(&mut self, x : f32, y : f32) {
+        self.x = x;
+        self.y = y;
+    }
+
+    fn Zoom(&mut self, zoom : f32) {
+        self.zoom = zoom;
+    }
+
+    fn Draw(&mut self) {
+        let mut frame = [['x' as u8; WIDTH / dW + 1]; HEIGHT/dH];
+        for i in 0..HEIGHT/dH -1 {
+            frame[i][WIDTH/dW] = '\n' as u8;
+        }
+        frame[HEIGHT / dH - 1][WIDTH/dW] = '\0' as u8;
+        let mut countMax = 0;
+
+        for i in 0..HEIGHT/dH {
+            for j in 0..WIDTH/dW {
+                let mut count = 0;
+
+                // calculating brightness
+                for k in 0..dH {
+                    for l in 0 ..dW {
+                        count += self.canvas[dH * i + k][dW * j + l] as usize;
+                    }
+                }
+
+                frame[i][j] = self.brightness(count);
+                countMax = std::cmp::max(count, countMax);
+            }
+        }
+        
+        // borders
+        for i in 0..HEIGHT/dH {
+            frame[i][0] = '@' as u8;
+            frame[i][WIDTH/dW - 1] = '@' as u8;
+        }
+        for j in 0..WIDTH/dW {
+            frame[0][j] = '@' as u8;
+            frame[HEIGHT/dH-1][j] = '@' as u8;
+        }
+        self.FillScreenWithString(&frame);
+    }
+
+    fn set_palette(&mut self, palette : i32) {
+        self._palette = palette;
+    }
+
 }

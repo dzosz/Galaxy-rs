@@ -1,23 +1,25 @@
 mod body;
 mod screen;
+mod scenario;
 
 use body::*;
-use screen::Screen;
+use scenario::Scenario;
+use screen::{Screen, TerminalScreen};
 
 type Vec2 = nalgebra::Vector2<f32>;
 
 struct SunEarthMoon {
-    scr: Screen,
     Sun: Body,
     Earth: Body,
     Moon: Body,
     G: f32,
 }
 
+/* In the restricted three-body problem, a body of negligible mass (the "planetoid") moves under the influence of two massive bodies. Having negligible mass, the force that the planetoid exerts on the two massive bodies may be neglected, and the system can be analysed and can therefore be described in terms of a two-body motion.
+ * For simplicity, choose units such that the distance between the two massive bodies, as well as the gravitational constant, are both equal to 1. */
 impl SunEarthMoon {
     fn new() -> SunEarthMoon {
         let mut obj = SunEarthMoon {
-            scr: Screen::new(0.0, 0.0, 5.0),
             Sun: Body::new(10000.0, 7.0),
             Earth: Body::new(1000.0, 2.0),
             Moon: Body::new(1.0, 1.2),
@@ -39,9 +41,9 @@ impl SunEarthMoon {
         obj
     }
 
-    fn plot_body(&mut self, body: Body) {
+    fn plot_body(&mut self, renderer : &mut impl Screen, body: Body) {
         // TODO how to get mutable reference to body here?
-        self.scr.PlotCircle(body.pos.x, body.pos.y, body.r);
+        renderer.PlotCircle(body.pos.x, body.pos.y, body.r);
     }
 }
 impl Scenario for SunEarthMoon {
@@ -58,25 +60,26 @@ impl Scenario for SunEarthMoon {
         self.Sun.Update(dt);
     }
 
-    fn draw(&mut self) {
-        self.scr.Clear();
-        self.scr.Position(self.Sun.pos.x, self.Sun.pos.y);
+    fn draw(&mut self, renderer : &mut impl Screen) {
+        renderer.Clear();
+        renderer.Position(self.Sun.pos.x, self.Sun.pos.y);
 
-        self.plot_body(self.Moon);
-        self.plot_body(self.Earth);
-        self.plot_body(self.Sun);
+        self.plot_body(renderer, self.Moon);
+        self.plot_body(renderer, self.Earth);
+        self.plot_body(renderer, self.Sun);
 
-        self.scr.Draw();
+        renderer.Draw();
     }
 }
 
 fn main() {
     let mut scenario = SunEarthMoon::new();
+    let mut renderer = TerminalScreen::new(0.0, 0.0, 5.0);
 
     let dt = 1.0 / 100.0;
     loop {
         scenario.process(dt);
-        scenario.draw();
+        scenario.draw(&mut renderer);
         //use std::{thread, time};
         //thread::sleep(time::Duration::from_millis(1000));
     }

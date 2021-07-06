@@ -1,13 +1,14 @@
 mod body;
 mod screen;
+mod scenario;
 
 use body::*;
-use screen::Screen;
+use scenario::Scenario;
+use screen::{Screen, TerminalScreen};
 
 type Vec2 = nalgebra::Vector2<f32>;
 
 struct ThreeBody {
-    scr: Screen,
     solarSystem: [Body; 3],
     G: f32,
 }
@@ -15,7 +16,6 @@ struct ThreeBody {
 impl ThreeBody {
     fn new() -> ThreeBody {
         let mut obj = ThreeBody {
-            scr: Screen::new(0.0, 0.0, 200.0),
             solarSystem: [
                 Body::new(1.0, 0.1),
                 Body::new(1.0, 0.1),
@@ -36,21 +36,21 @@ impl ThreeBody {
         obj
     }
 
-    fn plot_body(&mut self, body: Body) { // TODO how to get mutable reference to body here?
+    fn plot_body(&mut self, renderer : &mut impl Screen, body: Body) { // TODO how to get mutable reference to body here?
         let O = body.pos;
         let X = body.pos + 0.5 * body.vel;
 
-        self.scr.PlotCircle(body.pos.x, body.pos.y, body.r);
-        self.scr.PlotLine(O.x, O.y, X.x, X.y);
+        renderer.PlotCircle(body.pos.x, body.pos.y, body.r);
+        renderer.PlotLine(O.x, O.y, X.x, X.y);
 
         let mut a = O - X;
         a.normalize();
         a *= 0.1;
         let b = Vec2::new(a.y, -a.x);
 
-        self.scr
+        renderer
             .PlotLine(X.x, X.y, X.x + a.x + a.x, X.y + a.y + b.y);
-        self.scr
+        renderer
             .PlotLine(X.x, X.y, X.x + a.x - b.x, X.y + a.y - b.y);
     }
 }
@@ -76,22 +76,23 @@ impl Scenario for ThreeBody {
         }
     }
 
-    fn draw(&mut self) {
-        self.scr.Clear();
+    fn draw(&mut self, renderer : &mut impl Screen) {
+        renderer.Clear();
         for i in 0..self.solarSystem.len() {
-            self.plot_body(self.solarSystem[i]);
+            self.plot_body(renderer, self.solarSystem[i]);
         }
-        self.scr.Draw();
+        renderer.Draw();
     }
 }
 
 fn main() {
     let mut scenario = ThreeBody::new();
     let dt = 1.0 / 100.0;
+    let mut renderer = TerminalScreen::new(0.0, 0.0, 200.0);
 
     loop {
         scenario.process(dt);
-        scenario.draw();
+        scenario.draw(&mut renderer);
         //solarSystem.iter().for_each(|body| {
         //    print!("{:>16.8} {:>16.8}\n", body.vel.x, body.vel.y);
         //});

@@ -1,13 +1,14 @@
 mod body;
 mod screen;
+mod scenario;
 
 use body::*;
-use screen::Screen;
+use scenario::Scenario;
+use screen::{Screen, TerminalScreen};
 
 type Vec2 = nalgebra::Vector2<f32>;
 
 struct Collision {
-    scr: Screen,
     Centre1: Body,
     Bodies1: Vec<Body>,
     Centre2: Body,
@@ -18,7 +19,6 @@ struct Collision {
 impl Collision {
     fn new(subobjects: usize) -> Collision {
         let mut obj = Collision {
-            scr: Screen::new(0.0, 0.0, 5.0),
             Centre1: Body::new(2000.0, 2.5),
             Bodies1: Vec::with_capacity(subobjects),
             Centre2: Body::new(2000.0, 2.5),
@@ -80,9 +80,9 @@ impl Collision {
         obj
     }
 
-    fn plot_body(&mut self, body: Body) {
+    fn plot_body(&mut self, renderer : &mut impl Screen, body: Body) {
         // TODO how to get mutable reference to body here?
-        self.scr.PlotCircle(body.pos.x, body.pos.y, body.r);
+        renderer.PlotCircle(body.pos.x, body.pos.y, body.r);
     }
 }
 
@@ -111,29 +111,29 @@ impl Scenario for Collision {
         }
     }
 
-    fn draw(&mut self) {
-        self.scr.Clear();
-        self.plot_body(self.Centre1);
-        self.plot_body(self.Centre2);
+    fn draw(&mut self, renderer : &mut impl Screen) {
+        renderer.Clear();
+        self.plot_body(renderer, self.Centre1);
+        self.plot_body(renderer, self.Centre2);
 
         for i in 0..self.Bodies1.len() {
-            self.plot_body(self.Bodies1[i]);
+            self.plot_body(renderer, self.Bodies1[i]);
         }
         for i in 0..self.Bodies2.len() {
-            self.plot_body(self.Bodies2[i]);
+            self.plot_body(renderer, self.Bodies2[i]);
         }
 
         // drawing
         if (self.Centre1.pos - self.Centre2.pos).dot(&(self.Centre1.pos - self.Centre2.pos))
             < 90.0 * 90.0
         {
-            self.scr.Zoom(9.0);
+            renderer.Zoom(9.0);
         } else if (self.Centre1.pos - self.Centre2.pos).dot(&(self.Centre1.pos - self.Centre2.pos))
             > 110.0 * 110.0
         {
-            self.scr.Zoom(5.0);
+            renderer.Zoom(5.0);
         }
-        self.scr.Draw();
+        renderer.Draw();
     }
 }
 
@@ -144,10 +144,11 @@ fn random(low: f32, high: f32) -> f32 {
 
 fn main() {
     let mut scenario = Collision::new(20000);
+    let mut renderer = TerminalScreen::new(0.0, 0.0, 200.0);
     let dt = 1.0 / 40.0;
 
     loop {
         scenario.process(dt);
-        scenario.draw();
+        scenario.draw(&mut renderer);
     }
 }

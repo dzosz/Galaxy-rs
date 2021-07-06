@@ -1,11 +1,5 @@
 type Vec2 = nalgebra::Vector2<f32>;
 
-pub trait Scenario
-{
-    fn process(&mut self, dt : f32);
-    fn draw(&mut self);
-}
-
 #[derive(Debug, Copy, Clone)]
 pub struct Body
 {
@@ -32,8 +26,6 @@ impl Body {
 		self.pos.y=y;
 	}
 	
-    /* In the restricted three-body problem, a body of negligible mass (the "planetoid") moves under the influence of two massive bodies. Having negligible mass, the force that the planetoid exerts on the two massive bodies may be neglected, and the system can be analysed and can therefore be described in terms of a two-body motion.
-     * For simplicity, choose units such that the distance between the two massive bodies, as well as the gravitational constant, are both equal to 1. */
     pub fn PulledBy(&mut self, other : &Self, G : f32) {
 		let dist = (self.pos-other.pos).dot(&(self.pos-other.pos)).sqrt();
 		self.acc += G*other.m*(other.pos-self.pos) / dist/dist/dist;
