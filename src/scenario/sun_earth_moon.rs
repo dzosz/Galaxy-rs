@@ -1,14 +1,10 @@
-mod body;
-mod screen;
-mod scenario;
-
-use body::*;
-use scenario::Scenario;
-use screen::{Screen, TerminalScreen};
+use crate::body::Body;
+use crate::screen::Screen;
+use crate::scenario::Scenario;
 
 type Vec2 = nalgebra::Vector2<f32>;
 
-struct SunEarthMoon {
+pub struct SunEarthMoon {
     Sun: Body,
     Earth: Body,
     Moon: Body,
@@ -18,7 +14,7 @@ struct SunEarthMoon {
 /* In the restricted three-body problem, a body of negligible mass (the "planetoid") moves under the influence of two massive bodies. Having negligible mass, the force that the planetoid exerts on the two massive bodies may be neglected, and the system can be analysed and can therefore be described in terms of a two-body motion.
  * For simplicity, choose units such that the distance between the two massive bodies, as well as the gravitational constant, are both equal to 1. */
 impl SunEarthMoon {
-    fn new() -> SunEarthMoon {
+    pub fn new() -> SunEarthMoon {
         let mut obj = SunEarthMoon {
             Sun: Body::new(10000.0, 7.0),
             Earth: Body::new(1000.0, 2.0),
@@ -72,15 +68,3 @@ impl Scenario for SunEarthMoon {
     }
 }
 
-fn main() {
-    let mut scenario = SunEarthMoon::new();
-    let mut renderer = TerminalScreen::new(0.0, 0.0, 5.0);
-
-    let dt = 1.0 / 100.0;
-    loop {
-        scenario.process(dt);
-        scenario.draw(&mut renderer);
-        //use std::{thread, time};
-        //thread::sleep(time::Duration::from_millis(1000));
-    }
-}

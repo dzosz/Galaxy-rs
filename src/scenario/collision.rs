@@ -1,14 +1,10 @@
-mod body;
-mod screen;
-mod scenario;
-
-use body::*;
-use scenario::Scenario;
-use screen::{Screen, TerminalScreen};
+use crate::body::Body;
+use crate::screen::Screen;
+use crate::scenario::Scenario;
 
 type Vec2 = nalgebra::Vector2<f32>;
 
-struct Collision {
+pub struct Collision {
     Centre1: Body,
     Bodies1: Vec<Body>,
     Centre2: Body,
@@ -17,7 +13,7 @@ struct Collision {
 }
 
 impl Collision {
-    fn new(subobjects: usize) -> Collision {
+    pub fn new(subobjects: usize) -> Collision {
         let mut obj = Collision {
             Centre1: Body::new(2000.0, 2.5),
             Bodies1: Vec::with_capacity(subobjects),
@@ -142,13 +138,3 @@ fn random(low: f32, high: f32) -> f32 {
     low + rand::random::<f32>() / (rand_max / (high - low))
 }
 
-fn main() {
-    let mut scenario = Collision::new(20000);
-    let mut renderer = TerminalScreen::new(0.0, 0.0, 200.0);
-    let dt = 1.0 / 40.0;
-
-    loop {
-        scenario.process(dt);
-        scenario.draw(&mut renderer);
-    }
-}

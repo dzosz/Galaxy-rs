@@ -13,12 +13,16 @@ rand = "0.8.4"
 
 [[bin]]
 name = "sun_earth_moon"
-path = "bin/Sun-Earth-Moon.rs"
+path = "src/bin/Sun-Earth-Moon.rs"
 
 [[bin]]
 name = "collision"
-path = "bin/Collision.rs"
+path = "src/bin/Collision.rs"
 
 [[bin]]
 name = "threebody"
-path = "bin/ThreeBody.rs"
+path = "src/bin/ThreeBody.rs"
+
+[lib]
+name = "galaxyy"
+path = "src/lib.rs"

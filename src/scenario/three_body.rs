@@ -1,20 +1,16 @@
-mod body;
-mod screen;
-mod scenario;
-
-use body::*;
-use scenario::Scenario;
-use screen::{Screen, TerminalScreen};
+use crate::body::Body;
+use crate::screen::Screen;
+use crate::scenario::Scenario;
 
 type Vec2 = nalgebra::Vector2<f32>;
 
-struct ThreeBody {
+pub struct ThreeBody {
     solarSystem: [Body; 3],
     G: f32,
 }
 
 impl ThreeBody {
-    fn new() -> ThreeBody {
+    pub fn new() -> ThreeBody {
         let mut obj = ThreeBody {
             solarSystem: [
                 Body::new(1.0, 0.1),
@@ -85,18 +81,3 @@ impl Scenario for ThreeBody {
     }
 }
 
-fn main() {
-    let mut scenario = ThreeBody::new();
-    let dt = 1.0 / 100.0;
-    let mut renderer = TerminalScreen::new(0.0, 0.0, 200.0);
-
-    loop {
-        scenario.process(dt);
-        scenario.draw(&mut renderer);
-        //solarSystem.iter().for_each(|body| {
-        //    print!("{:>16.8} {:>16.8}\n", body.vel.x, body.vel.y);
-        //});
-        //use std::{thread, time};
-        //thread::sleep(time::Duration::from_millis(1000));
-    }
-}
