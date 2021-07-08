@@ -1,4 +1,4 @@
-use galaxyy::scenario::{Scenario, three_body::ThreeBody};
+use galaxyy::scenario::{Scenario, ThreeBody};
 use galaxyy::screen::{Screen, TerminalScreen};
 
 fn main() {

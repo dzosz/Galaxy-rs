@@ -1,4 +1,4 @@
-use galaxyy::scenario::{Scenario, sun_earth_moon::SunEarthMoon};
+use galaxyy::scenario::{Scenario, SunEarthMoon};
 use galaxyy::screen::{Screen, TerminalScreen};
 
 fn main() {

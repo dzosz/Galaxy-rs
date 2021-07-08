@@ -1,4 +1,4 @@
-use galaxyy::scenario::{Scenario, collision::Collision};
+use galaxyy::scenario::{Scenario, Collision};
 use galaxyy::screen::{Screen, TerminalScreen};
 
 fn main() {
