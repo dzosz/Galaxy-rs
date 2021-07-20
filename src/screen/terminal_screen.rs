@@ -4,8 +4,6 @@ use std::io::{self, Write};
 
 const WIDTH: usize = 950;
 const HEIGHT: usize = 670;
-const dW: usize = 8;
-const dH: usize = 8;
 
 pub struct TerminalScreen {
     canvas: [[bool; WIDTH]; HEIGHT],
@@ -67,12 +65,12 @@ impl TerminalScreen {
         obj.Clear();
         obj
     }
-    fn brightness(&self, count: usize) -> u8 {
+    fn brightness(&self, count: usize, divisor : usize) -> u8 {
         let p: &'static [(usize, &str); 3] = &[(10, " .,:;oOQ#@"), (10, "     .oO@@"), (3, " .:")];
 
         if 0 <= self._palette && self._palette <= 2 {
             let ref pal = p[self._palette as usize];
-            pal.1.as_bytes()[count * (pal.0 - 1) / dW / dH]
+            pal.1.as_bytes()[count * (pal.0 - 1) / divisor]
         } else {
             ' ' as u8
         }
@@ -326,6 +324,9 @@ impl Screen for TerminalScreen {
         let H = self.terminal.height;
         self.frame.resize(W*H, ' ' as u8);
 
+        let dW = WIDTH/W;
+        let dH = HEIGHT/H;
+
         for i in 0..std::cmp::min(self.terminal.height, HEIGHT/dH) {
             for j in 0..std::cmp::min(self.terminal.width, WIDTH/dW) {
                 let mut count = 0;
@@ -335,7 +336,7 @@ impl Screen for TerminalScreen {
                     }
                 }
                 let idx = i * W + j as usize;
-                self.frame[idx] = self.brightness(count);
+                self.frame[idx] = self.brightness(count, dH*dW);
             }
         }
 
