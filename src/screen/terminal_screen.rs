@@ -12,17 +12,20 @@ pub struct TerminalScreen {
     zoom: f32,
     _palette: i32,
     terminal: TerminalOutputer,
-    frame : Vec<u8>,
+    frame: Vec<u8>,
 }
 
 struct TerminalOutputer {
-    height : usize,
-    width : usize,
+    height: usize,
+    width: usize,
 }
 
 impl TerminalOutputer {
     fn new() -> TerminalOutputer {
-        TerminalOutputer { height : 0, width : 0}
+        TerminalOutputer {
+            height: 0,
+            width: 0,
+        }
     }
 
     fn setup(&mut self) {
@@ -33,12 +36,12 @@ impl TerminalOutputer {
                 self.width = w as usize;
                 self.height = h as usize;
                 println!("terminal w:{} h:{}", w, h);
-            },
+            }
             None => panic!("can't get terminal size"),
         }
     }
 
-    fn write(&self, buf : &[u8]) {
+    fn write(&self, buf: &[u8]) {
         let mut out = io::stdout();
         let starting_line = 0;
         let go_to_line_ansi_esacpe_code = format!("{esc}[{};1H", starting_line, esc = 27 as char);
@@ -65,7 +68,7 @@ impl TerminalScreen {
         obj.Clear();
         obj
     }
-    fn brightness(&self, count: usize, divisor : usize) -> u8 {
+    fn brightness(&self, count: usize, divisor: usize) -> u8 {
         let p: &'static [(usize, &str); 3] = &[(10, " .,:;oOQ#@"), (10, "     .oO@@"), (3, " .:")];
 
         if 0 <= self._palette && self._palette <= 2 {
@@ -159,7 +162,13 @@ impl TerminalScreen {
         let mut fromPoint = a;
         let mut toPoint = b;
 
-        let p = |x : i32, y : i32| { if steep { Point(y, x) } else { Point(x, y) } };
+        let p = |x: i32, y: i32| {
+            if steep {
+                Point(y, x)
+            } else {
+                Point(x, y)
+            }
+        };
 
         if steep {
             std::mem::swap(&mut fromPoint.0, &mut fromPoint.1);
@@ -169,20 +178,20 @@ impl TerminalScreen {
             std::mem::swap(&mut fromPoint, &mut toPoint);
         }
 
-        fn _rfpart(num : f32) -> f32 {
+        fn _rfpart(num: f32) -> f32 {
             1.0 - _fpart(num)
         }
 
-        fn _fpart(num : f32) -> f32 {
+        fn _fpart(num: f32) -> f32 {
             num - (num as i32 as f32)
         }
 
         let grad = dy as f32 / dx as f32;
         let mut intery = fromPoint.1 as f32 + _rfpart(fromPoint.0 as f32) * grad;
 
-        let mut draw_endpoint = |point : &Point| -> i32 {
+        let mut draw_endpoint = |point: &Point| -> i32 {
             let (x, y) = (point.0, point.1);
-            let xend = x;//.round();
+            let xend = x; //.round();
             let yend = y as f32 + grad * (xend - x) as f32;
 
             //let xgap = _rfpart(x as f32 + 0.5);
@@ -196,7 +205,7 @@ impl TerminalScreen {
             px
         };
 
-        let xstart = draw_endpoint(&p(fromPoint.0, fromPoint.1)) +1;
+        let xstart = draw_endpoint(&p(fromPoint.0, fromPoint.1)) + 1;
         let xend = draw_endpoint(&p(toPoint.0, toPoint.1));
 
         for x in xstart..xend {
@@ -206,7 +215,6 @@ impl TerminalScreen {
             self.drawPoint(p(x, y + 1));
             intery += grad;
         }
-
     }
 
     fn drawRectangle(&mut self, fromPoint: Point, toPoint: Point) {
@@ -322,39 +330,40 @@ impl Screen for TerminalScreen {
     fn Draw(&mut self) {
         let W = self.terminal.width;
         let H = self.terminal.height;
-        self.frame.resize(W*H, ' ' as u8);
+        self.frame.resize(W * H, ' ' as u8);
 
-        let dW = WIDTH/W;
-        let dH = HEIGHT/H;
+        let compressedWidth = WIDTH / W;
+        let compressedHeight = HEIGHT / H;
 
-        for i in 0..std::cmp::min(self.terminal.height, HEIGHT/dH) {
-            for j in 0..std::cmp::min(self.terminal.width, WIDTH/dW) {
+        for i in 0..std::cmp::min(self.terminal.height, HEIGHT / compressedHeight) {
+            for j in 0..std::cmp::min(self.terminal.width, WIDTH / compressedWidth) {
                 let mut count = 0;
-                for k in 0..dH {
-                    for l in 0..dW {
-                        count += self.canvas[i*dH+k][j*dW+l] as usize;
+                for k in 0..compressedHeight {
+                    for l in 0..compressedWidth {
+                        count +=
+                            self.canvas[i * compressedHeight + k][j * compressedWidth + l] as usize;
                     }
                 }
                 let idx = i * W + j as usize;
-                self.frame[idx] = self.brightness(count, dH*dW);
+                self.frame[idx] = self.brightness(count, compressedHeight * compressedWidth);
             }
         }
 
         // newlines
         for i in 0..H {
-            self.frame[i*W + W-1] = '\n' as u8;
+            self.frame[i * W + W - 1] = '\n' as u8;
         }
         // borders vertical
         for i in 0..H {
-            self.frame[i*W] = '#' as u8;
-            self.frame[i*W + W - 1] = '#' as u8;
+            self.frame[i * W] = '#' as u8;
+            self.frame[i * W + W - 1] = '#' as u8;
         }
         // borders horizontal
         for j in 0..W {
             self.frame[j] = '#' as u8;
-            self.frame[W*(H-1) + j] = '#' as u8;
+            self.frame[W * (H - 1) + j] = '#' as u8;
         }
-        self.frame[W*H-1] = '\0' as u8; // make sure last character will stop the print
+        self.frame[W * H - 1] = '\0' as u8; // make sure last character will stop the print
         self.terminal.write(&self.frame[..]);
     }
 
