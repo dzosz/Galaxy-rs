@@ -6,8 +6,6 @@ const WIDTH: usize = 950;
 const HEIGHT: usize = 670;
 const dW: usize = 8;
 const dH: usize = 8;
-static mut termWidth: usize = 80;
-static mut termHeight: usize = 24;
 
 pub struct TerminalScreen {
     canvas: [[bool; WIDTH]; HEIGHT],
@@ -15,6 +13,40 @@ pub struct TerminalScreen {
     y: f32,
     zoom: f32,
     _palette: i32,
+    terminal: TerminalOutputer
+}
+
+struct TerminalOutputer {
+    height : usize,
+    width : usize,
+}
+
+impl TerminalOutputer {
+    fn new() -> TerminalOutputer {
+        TerminalOutputer { height : 0, width : 0}
+    }
+
+    fn setup(&mut self) {
+        use terminal_size::{terminal_size, Height, Width};
+        let size = terminal_size();
+        match size {
+            Some((Width(w), Height(h))) => {
+                self.width = w as usize;
+                self.height = h as usize;
+                println!("terminal w:{} h:{}", w, h);
+            },
+            None => panic!("can't get terminal size"),
+        }
+    }
+
+    fn write(&self, buf : &[u8]) {
+        let mut out = io::stdout();
+        let starting_line = 0;
+        let go_to_line_ansi_esacpe_code = format!("{esc}[{};1H", starting_line, esc = 27 as char);
+        out.write_all(go_to_line_ansi_esacpe_code.as_bytes());
+        out.write_all(buf);
+        out.flush();
+    }
 }
 
 struct Point(i32, i32);
@@ -27,6 +59,7 @@ impl TerminalScreen {
             y: y,
             zoom: z,
             _palette: 0,
+            terminal: TerminalOutputer::new()
         };
         obj.Setup();
         obj.Clear();
@@ -42,32 +75,15 @@ impl TerminalScreen {
             ' ' as u8
         }
     }
-    fn FillScreenWithString(&mut self, frame: &[[u8; WIDTH / dW + 1]; HEIGHT / dH]) {
-        let mut out = io::stdout();
-        let lineheight = unsafe { std::cmp::min(termHeight as usize, HEIGHT / dH) };
-        let mut go_to_line_ansi_esacpe_code = String::new();
-        let linewidth = unsafe { std::cmp::min(termWidth, WIDTH / dW + 1) };
 
-        for line_idx in 0..lineheight {
-            go_to_line_ansi_esacpe_code = format!("{esc}[{};1H", line_idx, esc = 27 as char);
-            out.write_all(go_to_line_ansi_esacpe_code.as_bytes());
-            out.write_all(&frame[line_idx]);
-        }
-        out.flush();
+    fn FillScreenWithString(&mut self, frame: &[u8]) {
+        self.terminal.write(frame);
     }
 
     fn Setup(&mut self) {
-        use terminal_size::{terminal_size, Height, Width};
-        let size = terminal_size();
-        match size {
-            Some((Width(w), Height(h))) => unsafe {
-                termWidth = w as usize;
-                termHeight = h as usize;
-                println!("terminal w:{} h{}", termWidth, termHeight);
-            },
-            None => panic!("can't get terminal size"),
-        }
+        self.terminal.setup();
     }
+
     fn transform(&mut self, x: f32, y: f32) -> Point {
         // from world to screen coordinates
         let xx = ((x - self.x) * self.zoom) as i32 + (WIDTH as i32 / 2);
@@ -254,6 +270,7 @@ impl TerminalScreen {
         }
     }
 }
+
 impl Screen for TerminalScreen {
     fn Clear(&mut self) {
         for i in 0..HEIGHT {
@@ -307,39 +324,40 @@ impl Screen for TerminalScreen {
     }
 
     fn Draw(&mut self) {
-        let mut frame = [['x' as u8; WIDTH / dW + 1]; HEIGHT / dH];
-        for i in 0..HEIGHT / dH - 1 {
-            frame[i][WIDTH / dW] = '\n' as u8;
-        }
-        frame[HEIGHT / dH - 1][WIDTH / dW] = '\0' as u8;
-        let mut countMax = 0;
+        let W = self.terminal.width;
+        let H = self.terminal.height;
+        let mut frame = Vec::with_capacity(W*H);
+        frame.resize(W*H, ' ' as u8);
 
-        for i in 0..HEIGHT / dH {
-            for j in 0..WIDTH / dW {
+        for i in 0..std::cmp::min(self.terminal.height, HEIGHT/dH) {
+            for j in 0..std::cmp::min(self.terminal.width, WIDTH/dW) {
                 let mut count = 0;
-
-                // calculating brightness
                 for k in 0..dH {
                     for l in 0..dW {
-                        count += self.canvas[dH * i + k][dW * j + l] as usize;
+                        count += self.canvas[i*dH][j*dW+l] as usize;
                     }
                 }
-
-                frame[i][j] = self.brightness(count);
-                countMax = std::cmp::max(count, countMax);
+                let idx = i * W + j as usize;
+                frame[idx] = self.brightness(count);
             }
         }
 
-        // borders
-        for i in 0..HEIGHT / dH {
-            frame[i][0] = '@' as u8;
-            frame[i][WIDTH / dW - 1] = '@' as u8;
+        // newlines
+        for i in 0..H {
+            frame[i*W + W-1] = '\n' as u8;
         }
-        for j in 0..WIDTH / dW {
-            frame[0][j] = '@' as u8;
-            frame[HEIGHT / dH - 1][j] = '@' as u8;
+        // borders vertical
+        for i in 0..H {
+            frame[i*W] = '@' as u8;
+            frame[i*W + W - 1] = '@' as u8;
         }
-        self.FillScreenWithString(&frame);
+        // borders horizontal
+        for j in 0..W {
+            frame[j] = '@' as u8;
+            frame[W*(H-1) + j] = '@' as u8;
+        }
+        frame[W*H-1] = '\0' as u8; // make sure last character will stop the print
+        self.FillScreenWithString(&frame[..]);
     }
 
     fn set_palette(&mut self, palette: i32) {
