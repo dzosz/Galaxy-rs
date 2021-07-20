@@ -13,7 +13,8 @@ pub struct TerminalScreen {
     y: f32,
     zoom: f32,
     _palette: i32,
-    terminal: TerminalOutputer
+    terminal: TerminalOutputer,
+    frame : Vec<u8>,
 }
 
 struct TerminalOutputer {
@@ -59,7 +60,8 @@ impl TerminalScreen {
             y: y,
             zoom: z,
             _palette: 0,
-            terminal: TerminalOutputer::new()
+            terminal: TerminalOutputer::new(),
+            frame: Vec::new(),
         };
         obj.Setup();
         obj.Clear();
@@ -74,10 +76,6 @@ impl TerminalScreen {
         } else {
             ' ' as u8
         }
-    }
-
-    fn FillScreenWithString(&mut self, frame: &[u8]) {
-        self.terminal.write(frame);
     }
 
     fn Setup(&mut self) {
@@ -326,8 +324,7 @@ impl Screen for TerminalScreen {
     fn Draw(&mut self) {
         let W = self.terminal.width;
         let H = self.terminal.height;
-        let mut frame = Vec::with_capacity(W*H);
-        frame.resize(W*H, ' ' as u8);
+        self.frame.resize(W*H, ' ' as u8);
 
         for i in 0..std::cmp::min(self.terminal.height, HEIGHT/dH) {
             for j in 0..std::cmp::min(self.terminal.width, WIDTH/dW) {
@@ -338,26 +335,26 @@ impl Screen for TerminalScreen {
                     }
                 }
                 let idx = i * W + j as usize;
-                frame[idx] = self.brightness(count);
+                self.frame[idx] = self.brightness(count);
             }
         }
 
         // newlines
         for i in 0..H {
-            frame[i*W + W-1] = '\n' as u8;
+            self.frame[i*W + W-1] = '\n' as u8;
         }
         // borders vertical
         for i in 0..H {
-            frame[i*W] = '@' as u8;
-            frame[i*W + W - 1] = '@' as u8;
+            self.frame[i*W] = '#' as u8;
+            self.frame[i*W + W - 1] = '#' as u8;
         }
         // borders horizontal
         for j in 0..W {
-            frame[j] = '@' as u8;
-            frame[W*(H-1) + j] = '@' as u8;
+            self.frame[j] = '#' as u8;
+            self.frame[W*(H-1) + j] = '#' as u8;
         }
-        frame[W*H-1] = '\0' as u8; // make sure last character will stop the print
-        self.FillScreenWithString(&frame[..]);
+        self.frame[W*H-1] = '\0' as u8; // make sure last character will stop the print
+        self.terminal.write(&self.frame[..]);
     }
 
     fn set_palette(&mut self, palette: i32) {
