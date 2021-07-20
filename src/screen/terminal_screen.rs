@@ -137,6 +137,66 @@ impl TerminalScreen {
         }
     }
 
+    // Xialin Wu's line algorithm. Anti-aliased // TODO check correctness once pixel rendering is
+    // available
+    fn drawSmoothLine(&mut self, a: Point, b: Point) {
+        let dx = b.0 - a.0;
+        let dy = b.1 - a.1;
+        let steep = dx.abs() < dy.abs();
+
+        let mut fromPoint = a;
+        let mut toPoint = b;
+
+        let p = |x : i32, y : i32| { if steep { Point(y, x) } else { Point(x, y) } };
+
+        if steep {
+            std::mem::swap(&mut fromPoint.0, &mut fromPoint.1);
+            std::mem::swap(&mut toPoint.0, &mut toPoint.1);
+        }
+        if toPoint.0 < fromPoint.0 {
+            std::mem::swap(&mut fromPoint, &mut toPoint);
+        }
+
+        fn _rfpart(num : f32) -> f32 {
+            1.0 - _fpart(num)
+        }
+
+        fn _fpart(num : f32) -> f32 {
+            num - (num as i32 as f32)
+        }
+
+        let grad = dy as f32 / dx as f32;
+        let mut intery = fromPoint.1 as f32 + _rfpart(fromPoint.0 as f32) * grad;
+
+        let mut draw_endpoint = |point : &Point| -> i32 {
+            let (x, y) = (point.0, point.1);
+            let xend = x;//.round();
+            let yend = y as f32 + grad * (xend - x) as f32;
+
+            //let xgap = _rfpart(x as f32 + 0.5);
+            //let alpha = _rfpart(yend) * xgap;
+            let px = xend as i32;
+            let py = yend as i32;
+
+            self.drawPoint(p(px, py));
+            self.drawPoint(p(px, py + 1));
+
+            px
+        };
+
+        let xstart = draw_endpoint(&p(fromPoint.0, fromPoint.1)) +1;
+        let xend = draw_endpoint(&p(toPoint.0, toPoint.1));
+
+        for x in xstart..xend {
+            let y = intery as i32;
+            //let alpha = _rfpart(intery);
+            self.drawPoint(p(x, y));
+            self.drawPoint(p(x, y + 1));
+            intery += grad;
+        }
+
+    }
+
     fn drawRectangle(&mut self, fromPoint: Point, toPoint: Point) {
         let minX = std::cmp::min(fromPoint.0, toPoint.0);
         let maxX = std::cmp::max(fromPoint.0, toPoint.0);
