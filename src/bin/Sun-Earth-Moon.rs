@@ -9,7 +9,5 @@ fn main() {
     loop {
         scenario.process(dt);
         scenario.draw(&mut renderer);
-        //use std::{thread, time};
-        //thread::sleep(time::Duration::from_millis(1000));
     }
 }

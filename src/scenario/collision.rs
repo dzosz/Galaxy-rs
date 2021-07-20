@@ -76,7 +76,7 @@ impl Collision {
         obj
     }
 
-    fn plot_body(&mut self, renderer : &mut impl Screen, body: Body) {
+    fn plot_body(&self, renderer : &mut impl Screen, body: Body) {
         // TODO how to get mutable reference to body here?
         renderer.PlotCircle(body.pos.x, body.pos.y, body.r);
     }
@@ -107,7 +107,7 @@ impl Scenario for Collision {
         }
     }
 
-    fn draw(&mut self, renderer : &mut impl Screen) {
+    fn draw(&self, renderer : &mut impl Screen) {
         renderer.Clear();
         self.plot_body(renderer, self.Centre1);
         self.plot_body(renderer, self.Centre2);
