@@ -1,5 +1,5 @@
 use galaxyy::scenario::{Scenario, SunEarthMoon};
-use galaxyy::screen::{Screen, TerminalScreen};
+use galaxyy::screen::TerminalScreen;
 
 fn main() {
     let mut scenario = SunEarthMoon::new();

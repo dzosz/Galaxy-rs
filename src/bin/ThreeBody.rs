@@ -1,5 +1,5 @@
 use galaxyy::scenario::{Scenario, ThreeBody};
-use galaxyy::screen::{Screen, TerminalScreen};
+use galaxyy::screen::TerminalScreen;
 
 fn main() {
     let mut scenario = ThreeBody::new();
