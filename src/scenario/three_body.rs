@@ -40,7 +40,7 @@ impl ThreeBody {
         renderer.PlotLine(O.x, O.y, X.x, X.y);
 
         let mut a = O - X;
-        a.normalize();
+        a.normalize_mut();
         a *= 0.1;
         let b = Vec2::new(a.y, -a.x);
 
