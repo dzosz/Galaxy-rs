@@ -332,7 +332,7 @@ impl Screen for TerminalScreen {
                 let mut count = 0;
                 for k in 0..dH {
                     for l in 0..dW {
-                        count += self.canvas[i*dH][j*dW+l] as usize;
+                        count += self.canvas[i*dH+k][j*dW+l] as usize;
                     }
                 }
                 let idx = i * W + j as usize;
