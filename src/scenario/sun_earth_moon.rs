@@ -1,4 +1,4 @@
-use crate::body::Body;
+use crate::body::{Body, Mass, Radius};
 use crate::screen::Screen;
 use crate::scenario::Scenario;
 
@@ -16,9 +16,9 @@ pub struct SunEarthMoon {
 impl SunEarthMoon {
     pub fn new() -> SunEarthMoon {
         let mut obj = SunEarthMoon {
-            Sun: Body::new(10000.0, 7.0),
-            Earth: Body::new(1000.0, 2.0),
-            Moon: Body::new(1.0, 1.2),
+            Sun: Body::new(Mass(10000.0), Radius(7.0)),
+            Earth: Body::new(Mass(1000.0), Radius(2.0)),
+            Moon: Body::new(Mass(1.0), Radius(1.2)),
             G: 1.0,
         };
 

@@ -1,4 +1,4 @@
-use crate::body::Body;
+use crate::body::{Body, Mass, Radius};
 use crate::screen::Screen;
 use crate::scenario::Scenario;
 
@@ -13,9 +13,9 @@ impl ThreeBody {
     pub fn new() -> ThreeBody {
         let mut obj = ThreeBody {
             solarSystem: [
-                Body::new(1.0, 0.1),
-                Body::new(1.0, 0.1),
-                Body::new(1.0, 0.1),
+                Body::new(Mass(1.0), Radius(0.1)),
+                Body::new(Mass(1.0), Radius(0.1)),
+                Body::new(Mass(1.0), Radius(0.1)),
             ],
             G: 1.0,
         };
@@ -32,7 +32,7 @@ impl ThreeBody {
         obj
     }
 
-    fn plot_body(&self, renderer : &mut impl Screen, body: Body) { // TODO how to get mutable reference to body here?
+    fn plot_body(&self, renderer : &mut impl Screen, body: Body) {
         let O = body.pos;
         let X = body.pos + 0.5 * body.vel;
 

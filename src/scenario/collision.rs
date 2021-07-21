@@ -1,4 +1,4 @@
-use crate::body::Body;
+use crate::body::{Body, Mass, Radius};
 use crate::screen::Screen;
 use crate::scenario::Scenario;
 
@@ -12,12 +12,16 @@ pub struct Collision {
     G: f32,
 }
 
+/*
+ * The Barnes-Hut Algorithm describes an effective method for solving n-body problems.
+ * It works by reducing the number of force calculations by grouping particles. The basic idea behind the algorithm is that the force which a particle group excerts on a single particle can be approximated by the force of a pseudo particle located at the groups center of mass. For instance, the force which the Andromeda galaxy excerts on the milky way can be approximated by a point mass located at the centre of the Andromeda galaxy. There is no need to integrate over all stars in the Andromeda galaxy provided the distance between the two galaxies is large enough. This approximation is valid as long as the distance from a point group to a particle is large and the radius of the group is small in relation to the distance between the group and the particle.
+ */
 impl Collision {
     pub fn new(subobjects: usize) -> Collision {
         let mut obj = Collision {
-            Centre1: Body::new(2000.0, 2.5),
+            Centre1: Body::new(Mass(2000.0), Radius(2.5)),
             Bodies1: Vec::with_capacity(subobjects),
-            Centre2: Body::new(2000.0, 2.5),
+            Centre2: Body::new(Mass(2000.0), Radius(2.5)),
             Bodies2: Vec::with_capacity(subobjects),
             G: 3.0,
         };
@@ -32,7 +36,7 @@ impl Collision {
             let mut r = random(1.0, maxRadius);
             r = r * r / maxRadius;
 
-            let mut body = Body::new(1.0, 0.2);
+            let mut body = Body::new(Mass(1.0), Radius(0.2));
             body.pos = Vec2::new(r * theta.cos(), r * theta.sin());
             body.pos += obj.Centre1.pos;
 
@@ -57,7 +61,7 @@ impl Collision {
             r = r * r / maxRadius;
             r += 0.2 * obj.Centre2.r;
 
-            let mut body = Body::new(1.0, 0.2);
+            let mut body = Body::new(Mass(1.0), Radius(0.2));
             body.pos = Vec2::new(r * theta.cos(), r * theta.sin());
             body.pos += obj.Centre2.pos;
 

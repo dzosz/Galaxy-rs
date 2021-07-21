@@ -1,5 +1,8 @@
 type Vec2 = nalgebra::Vector2<f32>;
 
+pub struct Mass(pub f32);
+pub struct Radius(pub f32);
+
 #[derive(Debug, Copy, Clone)]
 pub struct Body
 {
@@ -11,10 +14,10 @@ pub struct Body
 }
 
 impl Body {
-	pub fn new(m : f32, r : f32) -> Body {
+	pub fn new(m : Mass, r : Radius) -> Body {
         Body {
-            r:r,
-            m:m,
+            r:r.0,
+            m:m.0,
             pos:Vec2::new(0.0, 0.0),
             vel:Vec2::new(0.0, 0.0),
             acc:Vec2::new(0.0, 0.0)
