@@ -11,8 +11,6 @@ pub struct SunEarthMoon {
     G: f32,
 }
 
-/* In the restricted three-body problem, a body of negligible mass (the "planetoid") moves under the influence of two massive bodies. Having negligible mass, the force that the planetoid exerts on the two massive bodies may be neglected, and the system can be analysed and can therefore be described in terms of a two-body motion.
- * For simplicity, choose units such that the distance between the two massive bodies, as well as the gravitational constant, are both equal to 1. */
 impl SunEarthMoon {
     pub fn new() -> SunEarthMoon {
         let mut obj = SunEarthMoon {
@@ -38,7 +36,6 @@ impl SunEarthMoon {
     }
 
     fn plot_body(&self, renderer : &mut impl Screen, body: Body) {
-        // TODO how to get mutable reference to body here?
         renderer.PlotCircle(body.pos.x, body.pos.y, body.r);
     }
 }

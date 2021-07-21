@@ -36,7 +36,7 @@ impl Body {
 	
 	pub fn Update(&mut self, dt : f32) {
 		self.vel+=dt*self.acc;
-		self.pos+=dt*self.vel;
+		self.pos+=dt*(self.vel);// + self.acc*0.5); // TODO why do we ignore acceleration ?
 		self.acc=Vec2::new(0.0, 0.0);
 	}
     
