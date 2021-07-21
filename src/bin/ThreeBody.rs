@@ -1,10 +1,10 @@
 use galaxyy::scenario::{Scenario, ThreeBody};
-use galaxyy::screen::TerminalScreen;
+use galaxyy::screen::{TextRender, Zoom};
 
 fn main() {
     let mut scenario = ThreeBody::new();
     let dt = 1.0 / 100.0;
-    let mut renderer = TerminalScreen::new(0.0, 0.0, 200.0);
+    let mut renderer = TextRender::new(Zoom(200.0));
 
     loop {
         scenario.process(dt);

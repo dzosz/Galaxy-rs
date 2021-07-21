@@ -9,8 +9,20 @@ pub trait Screen
     fn Zoom(&mut self, zoom : f32);
     fn Draw(&mut self);
     fn set_palette(&mut self, palette : i32);
+    fn TextOutputter(&mut self, output : Box<dyn TextOutputter>);
+}
+pub trait TextOutputter {
+    fn setup(&mut self);
+    fn write(&mut self, buf : &[u8]);
+    fn width(&self) -> usize;
+    fn height(&self) -> usize;
 }
 
-mod terminal_screen;
-pub use terminal_screen::TerminalScreen;
+struct Point(i32, i32);
+
+mod text_render;
+pub use text_render::TextRender;
+pub use text_render::Zoom;
+mod egui_screen;
+pub use egui_screen::EguiScreen;
 

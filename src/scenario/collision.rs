@@ -80,7 +80,7 @@ impl Collision {
         obj
     }
 
-    fn plot_body(&self, renderer : &mut impl Screen, body: Body) {
+    fn plot_body(&self, renderer : &mut dyn Screen, body: Body) {
         // TODO how to get mutable reference to body here?
         renderer.PlotCircle(body.pos.x, body.pos.y, body.r);
     }
@@ -111,7 +111,7 @@ impl Scenario for Collision {
         }
     }
 
-    fn draw(&self, renderer : &mut impl Screen) {
+    fn draw(&self, renderer : &mut dyn Screen) {
         renderer.Clear();
         self.plot_body(renderer, self.Centre1);
         self.plot_body(renderer, self.Centre2);
@@ -127,11 +127,11 @@ impl Scenario for Collision {
         if (self.Centre1.pos - self.Centre2.pos).dot(&(self.Centre1.pos - self.Centre2.pos))
             < 90.0 * 90.0
         {
-            renderer.Zoom(9.0);
+            renderer.Zoom(5.0);
         } else if (self.Centre1.pos - self.Centre2.pos).dot(&(self.Centre1.pos - self.Centre2.pos))
             > 110.0 * 110.0
         {
-            renderer.Zoom(5.0);
+            renderer.Zoom(2.0);
         }
         renderer.Draw();
     }

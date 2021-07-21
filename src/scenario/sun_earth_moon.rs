@@ -35,7 +35,7 @@ impl SunEarthMoon {
         obj
     }
 
-    fn plot_body(&self, renderer : &mut impl Screen, body: Body) {
+    fn plot_body(&self, renderer : &mut dyn Screen, body: Body) {
         renderer.PlotCircle(body.pos.x, body.pos.y, body.r);
     }
 }
@@ -53,7 +53,7 @@ impl Scenario for SunEarthMoon {
         self.Sun.Update(dt);
     }
 
-    fn draw(&self, renderer : &mut impl Screen) {
+    fn draw(&self, renderer : &mut dyn Screen) {
         renderer.Clear();
         renderer.Position(self.Sun.pos.x, self.Sun.pos.y);
 

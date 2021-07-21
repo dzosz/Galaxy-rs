@@ -11,5 +11,5 @@ pub use three_body::ThreeBody;
 pub trait Scenario
 {
     fn process(&mut self, dt : f32);
-    fn draw(&self, renderer : &mut impl Screen);
+    fn draw(&self, renderer : &mut dyn Screen);
 }

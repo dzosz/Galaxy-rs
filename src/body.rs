@@ -31,7 +31,7 @@ impl Body {
 	
     pub fn PulledBy(&mut self, other : &Self, G : f32) {
 		let dist = (self.pos-other.pos).dot(&(self.pos-other.pos)).sqrt();
-		self.acc += G*other.m*(other.pos-self.pos) / dist/dist/dist;
+		self.acc += G*other.m*(other.pos-self.pos) / dist/dist/dist; // TODO ignoring self.m ?
 	}
 	
 	pub fn Update(&mut self, dt : f32) {

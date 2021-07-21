@@ -1,33 +1,17 @@
-use crate::screen::Screen;
+use crate::screen::*;
 
 use std::io::{self, Write};
 
 const WIDTH: usize = 950;
 const HEIGHT: usize = 670;
 
-pub struct TerminalScreen {
-    canvas: [[bool; WIDTH]; HEIGHT],
-    x: f32,
-    y: f32,
-    zoom: f32,
-    _palette: i32,
-    terminal: TerminalOutputer,
-    frame: Vec<u8>,
-}
-
 struct TerminalOutputer {
     height: usize,
     width: usize,
+    frame: Vec<u8>,
 }
 
-impl TerminalOutputer {
-    fn new() -> TerminalOutputer {
-        TerminalOutputer {
-            height: 0,
-            width: 0,
-        }
-    }
-
+impl TextOutputter for TerminalOutputer {
     fn setup(&mut self) {
         use terminal_size::{terminal_size, Height, Width};
         let size = terminal_size();
@@ -36,12 +20,13 @@ impl TerminalOutputer {
                 self.width = w as usize;
                 self.height = h as usize;
                 println!("terminal w:{} h:{}", w, h);
+                self.frame.resize(self.width * self.height, ' ' as u8);
             }
             None => panic!("can't get terminal size"),
         }
     }
 
-    fn write(&self, buf: &[u8]) {
+    fn write(&mut self, buf : &[u8]) {
         let mut out = io::stdout();
         let starting_line = 0;
         let go_to_line_ansi_esacpe_code = format!("{esc}[{};1H", starting_line, esc = 27 as char);
@@ -49,38 +34,66 @@ impl TerminalOutputer {
         out.write_all(buf);
         out.flush();
     }
+    fn width(&self) -> usize  {
+        self.width
+    }
+    fn height(&self) -> usize {
+        self.height
+    }
+}
+
+impl TerminalOutputer {
+    fn new() -> TerminalOutputer {
+        TerminalOutputer {
+            height: 0,
+            width: 0,
+            frame: Vec::new(),
+        }
+    }
 }
 
 struct Point(i32, i32);
+pub struct Zoom(pub f32);
 
-impl TerminalScreen {
-    pub fn new(x: f32, y: f32, z: f32) -> TerminalScreen {
-        let mut obj = TerminalScreen {
+pub struct TextRender {
+    canvas: [[bool; WIDTH]; HEIGHT],
+    x: f32,
+    y: f32,
+    zoom: f32,
+    _palette: i32,
+    output: Box<dyn TextOutputter>,
+    frame: Vec<u8>,
+}
+
+
+impl TextRender {
+    pub fn new(z: Zoom) -> TextRender {
+        let mut obj = TextRender {
             canvas: [[false; WIDTH]; HEIGHT],
-            x: x,
-            y: y,
-            zoom: z,
+            x: 0.0,
+            y: 0.0,
+            zoom: z.0,
             _palette: 0,
-            terminal: TerminalOutputer::new(),
+            output: Box::new(TerminalOutputer::new()),
             frame: Vec::new(),
         };
         obj.Setup();
         obj.Clear();
         obj
     }
-    fn brightness(&self, count: usize, divisor: usize) -> u8 {
+    fn brightness(&self, count: usize, max: usize) -> u8 {
         let p: &'static [(usize, &str); 3] = &[(10, " .,:;oOQ#@"), (10, "     .oO@@"), (3, " .:")];
 
         if 0 <= self._palette && self._palette <= 2 {
             let ref pal = p[self._palette as usize];
-            pal.1.as_bytes()[count * (pal.0 - 1) / divisor]
+            pal.1.as_bytes()[count * (pal.0 - 1) / max]
         } else {
             ' ' as u8
         }
     }
 
     fn Setup(&mut self) {
-        self.terminal.setup();
+        self.output.setup();
     }
 
     fn transform(&mut self, x: f32, y: f32) -> Point {
@@ -275,7 +288,7 @@ impl TerminalScreen {
     }
 }
 
-impl Screen for TerminalScreen {
+impl Screen for TextRender {
     fn Clear(&mut self) {
         for i in 0..HEIGHT {
             for j in 0..WIDTH {
@@ -327,16 +340,20 @@ impl Screen for TerminalScreen {
         self.zoom = zoom;
     }
 
+    fn TextOutputter(&mut self, output : Box<dyn TextOutputter>) {
+        self.output = output;
+    }
+
     fn Draw(&mut self) {
-        let W = self.terminal.width;
-        let H = self.terminal.height;
+        let W = self.output.width();
+        let H = self.output.height();
         self.frame.resize(W * H, ' ' as u8);
 
         let compressedWidth = WIDTH / W;
         let compressedHeight = HEIGHT / H;
 
-        for i in 0..std::cmp::min(self.terminal.height, HEIGHT / compressedHeight) {
-            for j in 0..std::cmp::min(self.terminal.width, WIDTH / compressedWidth) {
+        for i in 0..std::cmp::min(H, HEIGHT / compressedHeight) {
+            for j in 0..std::cmp::min(W, WIDTH / compressedWidth) {
                 let mut count = 0;
                 for k in 0..compressedHeight {
                     for l in 0..compressedWidth {
@@ -353,18 +370,18 @@ impl Screen for TerminalScreen {
         for i in 0..H {
             self.frame[i * W + W - 1] = '\n' as u8;
         }
-        // borders vertical
-        for i in 0..H {
-            self.frame[i * W] = '#' as u8;
-            self.frame[i * W + W - 1] = '#' as u8;
-        }
         // borders horizontal
         for j in 0..W {
             self.frame[j] = '#' as u8;
             self.frame[W * (H - 1) + j] = '#' as u8;
         }
+        // borders vertical
+        for i in 0..H {
+            self.frame[i * W] = '#' as u8;
+            self.frame[i * W + W - 1] = '\n' as u8;
+        }
         self.frame[W * H - 1] = '\0' as u8; // make sure last character will stop the print
-        self.terminal.write(&self.frame[..]);
+        self.output.write(&self.frame);
     }
 
     fn set_palette(&mut self, palette: i32) {

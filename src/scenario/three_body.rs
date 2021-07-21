@@ -32,7 +32,7 @@ impl ThreeBody {
         obj
     }
 
-    fn plot_body(&self, renderer : &mut impl Screen, body: Body) {
+    fn plot_body(&self, renderer : &mut dyn Screen, body: Body) {
         let O = body.pos;
         let X = body.pos + 0.5 * body.vel;
 
@@ -72,7 +72,7 @@ impl Scenario for ThreeBody {
         }
     }
 
-    fn draw(&self, renderer : &mut impl Screen) {
+    fn draw(&self, renderer : &mut dyn Screen) {
         renderer.Clear();
         for i in 0..self.solarSystem.len() {
             self.plot_body(renderer, self.solarSystem[i]);
