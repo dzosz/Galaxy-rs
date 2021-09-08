@@ -7,8 +7,7 @@ mod collision_barnes_hut;
 //mod barnes_hut;
 
 pub use collision::Collision;
-pub use collision_barnes_hut::*;
-pub use crate::barnes_hut::NBodyWnd;
+pub use collision_barnes_hut::GalaxyCollisionBarnesHut;
 pub use sun_earth_moon::SunEarthMoon;
 pub use three_body::ThreeBody;
 

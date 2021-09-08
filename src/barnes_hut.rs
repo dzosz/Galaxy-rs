@@ -1,5 +1,3 @@
-use rand::Rng;
-
 use crate::body::*;
 
 type Vec2 = nalgebra::Vector2<f64>;
@@ -7,7 +5,7 @@ type Vec2 = nalgebra::Vector2<f64>;
 const MASS_SUN: f64 = 1.988435e30;
 const PC_IN_M: f64 = 3.08567758129e16; //???
 const GAMMA_SI: f64 = 6.67428e-11;
-const GAMMA: f64 =
+pub const GAMMA: f64 =
     GAMMA_SI / (PC_IN_M * PC_IN_M * PC_IN_M) * MASS_SUN * (365.25 * 86400.0) * (365.25 * 86400.0);
 
 mod quadrant {
@@ -241,7 +239,7 @@ impl Node {
 }
 
 #[derive(Default)]
-pub struct ModelNBody {
+pub struct BarnesHutSimulation {
     pos_upper_bound: Vec2,
     pos_lower_bound: Vec2,
     pub center: Vec2,
@@ -251,12 +249,14 @@ pub struct ModelNBody {
     particle_num: usize,
 }
 
-impl ModelNBody {
-    fn new(particle_num: usize) -> Self {
+impl BarnesHutSimulation {
+    pub fn new(bodies: Vec<Body>) -> Self {
         let mut obj: Self = Default::default();
-        obj.particle_num = particle_num;
+        obj.particle_num = bodies.len();
         obj.pos_upper_bound = Vec2::new(std::f64::MIN, std::f64::MIN);
         obj.pos_lower_bound = Vec2::new(std::f64::MAX, std::f64::MAX);
+        obj.bodies = bodies;
+        obj.init();
         obj
     }
 
@@ -273,7 +273,7 @@ impl ModelNBody {
         self.center = self.tree.compute_mass_distribution();
     }
 
-    fn eval(&mut self) {
+    pub fn eval(&mut self) {
         self.build_quadrant_tree();
 
         for i in 0..self.bodies.len() {
@@ -281,83 +281,13 @@ impl ModelNBody {
         }
     }
 
-    fn init_collision(&mut self) {
-        self.bodies.clear();
-        self.bodies.reserve(self.particle_num);
+    fn init(&mut self) {
+        for body in &self.bodies {
+            self.pos_upper_bound.x = self.pos_upper_bound.x.max(body.pos.x);
+            self.pos_upper_bound.y = self.pos_upper_bound.y.max(body.pos.y);
 
-        let add_body = |mass, position, velocity, radius, bodies: &mut Vec<Body>| {
-            let mut new_body = Body::new(mass, radius);
-            new_body.pos = position;
-            new_body.vel = velocity;
-            (*bodies).push(new_body);
-        };
-
-        let get_orbital_velocity = |pos1: Vec2, pos2: Vec2, m1: f64| {
-            let dist: f64 = (pos1 - pos2).dot(&(pos1 - pos2)).sqrt();
-            let v = (GAMMA * m1 / dist).sqrt();
-            return Vec2::new((pos1.y - pos2.y) / dist * v, -(pos1.x - pos2.x) / dist * v);
-        };
-
-        // add black hole
-        add_body(
-            Mass(1000000.0),
-            Vec2::new(0.0, 0.0),
-            Vec2::new(0.0, 0.0),
-            Radius(0.5),
-            &mut self.bodies,
-        );
-
-        // second black hole
-        {
-            let pos = Vec2::new(10.0, 10.0);
-            let vel = get_orbital_velocity(self.bodies[0].pos, pos, self.bodies[0].mass) * 0.9;
-            add_body(
-                Mass(self.bodies[0].mass / 10.0),
-                pos,
-                vel,
-                Radius(0.5),
-                &mut self.bodies,
-            );
-        }
-
-        // add first galaxy
-        let mut rng = rand::thread_rng();
-        for _ in 0..3999.min(self.particle_num - 2) {
-            let rad = 10.0;
-            let r = 0.1 + 0.8 * (rad * rng.gen_range(0.0..1.0));
-            let a = 2.0 * std::f64::consts::PI * rng.gen_range(0.0..1.0);
-            let mass = Mass(0.03 + 20.0 * rng.gen_range(0.0..1.0));
-            let pos = Vec2::new(r * a.sin(), r * a.cos());
-            let vel = get_orbital_velocity(self.bodies[0].pos, pos, self.bodies[0].mass);
-
-            add_body(mass, pos, vel, Radius(0.05), &mut self.bodies);
-
-            self.pos_upper_bound.x = self.pos_upper_bound.x.max(pos.x);
-            self.pos_upper_bound.y = self.pos_upper_bound.y.max(pos.y);
-
-            self.pos_lower_bound.x = self.pos_lower_bound.x.min(pos.x);
-            self.pos_lower_bound.y = self.pos_lower_bound.y.min(pos.y);
-        }
-
-        // add second galaxy
-        for _ in 4001..self.particle_num {
-            let rad = 3.0;
-            let r = 0.1 + 0.8 * (rad * rng.gen_range(0.0..1.0));
-            let a = 2.0 * std::f64::consts::PI * rng.gen_range(0.0..1.0);
-            let mass = Mass(0.03 + 20.0 * rng.gen_range(0.0..1.0));
-            let pos = Vec2::new(
-                self.bodies[1].pos.x + r * a.sin(),
-                self.bodies[1].pos.y + r * a.cos(),
-            );
-            let vel = get_orbital_velocity(self.bodies[1].pos, pos, self.bodies[1].mass)
-                + self.bodies[1].vel;
-            add_body(mass, pos, vel, Radius(0.05), &mut self.bodies);
-
-            self.pos_upper_bound.x = self.pos_upper_bound.x.max(pos.x);
-            self.pos_upper_bound.y = self.pos_upper_bound.y.max(pos.y);
-
-            self.pos_lower_bound.x = self.pos_lower_bound.x.min(pos.x);
-            self.pos_lower_bound.y = self.pos_lower_bound.y.min(pos.y);
+            self.pos_lower_bound.x = self.pos_lower_bound.x.min(body.pos.x);
+            self.pos_lower_bound.y = self.pos_lower_bound.y.min(body.pos.y);
         }
 
         // The Barnes Hut algorithm needs square shaped quadrants.
@@ -396,14 +326,14 @@ const APPROXIMATIONS_ADB6: [f64; 6] = [
 
 // six step adams-bashforth integration method
 // https://web.mit.edu/10.001/Web/Course_Notes/Differential_Equations_Notes/node6.html
-struct IntegratorADB6 {
+pub struct IntegratorADB6 {
     dimensions: usize,
     timestep: f64,
     data: [Vec<Body>; 6],
 }
 
 impl IntegratorADB6 {
-    fn new(dimensions: usize, timestep: f64) -> Self {
+    pub fn new(dimensions: usize, timestep: f64) -> Self {
         Self {
             dimensions: dimensions,
             timestep: timestep,
@@ -417,7 +347,10 @@ impl IntegratorADB6 {
             ],
         }
     }
-    fn integrate(&mut self, dt: f64, model: &mut ModelNBody) {
+
+    // TODO make integrator independent of barnes hut simulation? in original implementation we
+    // were just processing raw numeric data in doubles
+    pub fn integrate(&mut self, dt: f64, model: &mut BarnesHutSimulation) {
         for i in 0..self.dimensions {
             model.bodies[i].pos += dt
                 * (APPROXIMATIONS_ADB6[0] * self.data[5][i].pos
@@ -443,7 +376,7 @@ impl IntegratorADB6 {
         }
     }
 
-    fn set_initial_state(&mut self, model: &mut ModelNBody) {
+    pub fn set_initial_state(&mut self, model: &mut BarnesHutSimulation) {
         assert!(model.bodies.len() == self.dimensions);
         let initial = model.bodies.clone();
 
@@ -505,24 +438,3 @@ impl IntegratorADB6 {
     }
 }
 
-pub struct NBodyWnd {
-    integrator: IntegratorADB6,
-    pub model: ModelNBody,
-}
-
-impl NBodyWnd {
-    pub fn new() -> Self {
-        let mut obj = Self {
-            integrator: IntegratorADB6::new(5000, 100.0),
-            model: ModelNBody::new(5000),
-        };
-        obj.model.init_collision();
-        obj.integrator.set_initial_state(&mut obj.model);
-        obj
-    }
-
-    pub fn render(&mut self, dt: f64) {
-        self.integrator.integrate(dt, &mut self.model);
-        self.model.eval();
-    }
-}

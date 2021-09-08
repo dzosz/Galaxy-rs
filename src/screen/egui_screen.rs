@@ -46,7 +46,7 @@ impl epi::App for EguiScreen {
                 }
                 if ui.button("Collision2").clicked() {
                     self.renderer.set_zoom(20.0);
-                    self.activeScenario = Box::new(NBodyWnd::new());
+                    self.activeScenario = Box::new(GalaxyCollisionBarnesHut::new());
                     self.dt = 100.0;
                 }
                 if ui.button("ThreeBody").clicked() {

@@ -23,7 +23,7 @@ name = "collision"
 path = "src/bin/collision.rs"
 
 [[bin]]
-name = "collision2"
+name = "collision_barnes_hut"
 path = "src/bin/collision_barnes_hut.rs"
 
 [[bin]]
