@@ -16,19 +16,19 @@ eframe = "0.13.1"
 
 [[bin]]
 name = "sun_earth_moon"
-path = "src/bin/Sun-Earth-Moon.rs"
+path = "src/bin/sun_earth_moon.rs"
 
 [[bin]]
 name = "collision"
-path = "src/bin/Collision.rs"
+path = "src/bin/collision.rs"
 
 [[bin]]
 name = "collision2"
-path = "src/bin/Collision2.rs"
+path = "src/bin/collision_barnes_hut.rs"
 
 [[bin]]
 name = "threebody"
-path = "src/bin/ThreeBody.rs"
+path = "src/bin/threebody.rs"
 
 [[bin]]
 name = "egui_all"

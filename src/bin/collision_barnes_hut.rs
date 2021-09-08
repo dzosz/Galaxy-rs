@@ -1,6 +1,6 @@
-use galaxyy::scenario::{Scenario};
+use galaxyy::scenario::Scenario;
 use galaxyy::screen::{TextRender, Zoom};
-use galaxyy::barnes_hut::*;
+use galaxyy::barnes_hut::NBodyWnd;
 
 fn main() {
     let mut scenario = NBodyWnd::new();

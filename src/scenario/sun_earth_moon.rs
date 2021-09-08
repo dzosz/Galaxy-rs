@@ -27,41 +27,41 @@ impl SunEarthMoon {
         obj.Sun.vel = Vec2::new(0.0, 0.0);
 
         obj.Earth.pos = Vec2::new(R, 0.0);
-        obj.Earth.vel = Vec2::new(0.0, (obj.Sun.m / R).sqrt());
+        obj.Earth.vel = Vec2::new(0.0, (obj.Sun.mass / R).sqrt());
 
         obj.Moon.pos = Vec2::new(R, r);
-        obj.Moon.vel = Vec2::new((obj.Earth.m / r).sqrt(), obj.Earth.vel.y);
+        obj.Moon.vel = Vec2::new((obj.Earth.mass / r).sqrt(), obj.Earth.vel.y);
 
         obj
     }
 
     fn plot_body(&self, renderer : &mut dyn Screen, body: Body) {
-        renderer.PlotCircle(body.pos.x, body.pos.y, body.r);
+        renderer.plot_circle(body.pos.x, body.pos.y, body.radius);
     }
 }
 impl Scenario for SunEarthMoon {
     fn process(&mut self, dt: f64) {
-        self.Moon.PulledBy(&self.Earth, self.G);
-        self.Moon.PulledBy(&self.Sun, self.G);
-        self.Earth.PulledBy(&self.Moon, self.G);
-        self.Earth.PulledBy(&self.Sun, self.G);
-        self.Sun.PulledBy(&self.Moon, self.G);
-        self.Sun.PulledBy(&self.Earth, self.G);
+        self.Moon.pull_by(&self.Earth, self.G);
+        self.Moon.pull_by(&self.Sun, self.G);
+        self.Earth.pull_by(&self.Moon, self.G);
+        self.Earth.pull_by(&self.Sun, self.G);
+        self.Sun.pull_by(&self.Moon, self.G);
+        self.Sun.pull_by(&self.Earth, self.G);
 
-        self.Moon.Update(dt);
-        self.Earth.Update(dt);
-        self.Sun.Update(dt);
+        self.Moon.process_forces(dt);
+        self.Earth.process_forces(dt);
+        self.Sun.process_forces(dt);
     }
 
     fn draw(&self, renderer : &mut dyn Screen) {
-        renderer.Clear();
-        renderer.Position(self.Sun.pos.x, self.Sun.pos.y);
+        renderer.clear();
+        renderer.position(self.Sun.pos.x, self.Sun.pos.y);
 
         self.plot_body(renderer, self.Moon);
         self.plot_body(renderer, self.Earth);
         self.plot_body(renderer, self.Sun);
 
-        renderer.Draw();
+        renderer.draw();
     }
 }
 

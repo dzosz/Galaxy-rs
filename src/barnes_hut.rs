@@ -4,19 +4,17 @@ use crate::body::*;
 
 type Vec2 = nalgebra::Vector2<f64>;
 
-const S_SOFT: f64 = 0.01; // approx. 3 light year
-const mass_sun: f64 = 1.988435e30;
-const pc_in_m: f64 = 3.08567758129e16;
-const gamma_si: f64 = 6.67428e-11;
-const gamma: f64 =
-    gamma_si / (pc_in_m * pc_in_m * pc_in_m) * mass_sun * (365.25 * 86400.0) * (365.25 * 86400.0);
-const s_theta: f64 = 0.9;
+const MASS_SUN: f64 = 1.988435e30;
+const PC_IN_M: f64 = 3.08567758129e16; //???
+const GAMMA_SI: f64 = 6.67428e-11;
+const GAMMA: f64 =
+    GAMMA_SI / (PC_IN_M * PC_IN_M * PC_IN_M) * MASS_SUN * (365.25 * 86400.0) * (365.25 * 86400.0);
 
 mod Quadrant {
-    pub const NorthWest: usize = 0;
-    pub const NorthEast: usize = 1;
-    pub const SouthWest: usize = 2;
-    pub const SouthEast: usize = 3;
+    pub const NORTH_WEST: usize = 0;
+    pub const NORTH_EAST: usize = 1;
+    pub const SOUTH_WEST: usize = 2;
+    pub const SOUTH_EAST: usize = 3;
     pub const MAX: usize = 4;
     pub const INVALID: usize = 5;
 }
@@ -31,7 +29,6 @@ struct Node {
     pos_upper_bound: Vec2,
     pos_lower_bound: Vec2,
     center: Vec2,
-    too_close: bool,
     nested: Option<NestedBody>,
 }
 
@@ -50,7 +47,6 @@ impl Default for Node {
             pos_upper_bound: Vec2::new(0.0, 0.0),
             pos_lower_bound: Vec2::new(0.0, 0.0),
             center: Vec2::new(0.0, 0.0),
-            too_close: false,
             nested: Default::default(), // [None; 4]
         }
     }
@@ -68,16 +64,13 @@ impl Node {
 
     fn calcForce(&self, body: Body) -> Vec2 {
         let acc = self.calcTreeForce(body);
-        /* TODO
         // calculate the force from particles not in the barnes hut tree on particle p
-        if (s_renegades.size())
-        {
+        /*
         for (std::size_t i=0; i<s_renegades.size(); ++i)
         {
         Vec2D buf = CalcAcc(p1, s_renegades[i]);
         acc.x += buf.x;
         acc.y += buf.y;
-        }
         }*/
         acc
     }
@@ -90,10 +83,11 @@ impl Node {
                     .dot(&(body.pos - self.mass_center))
                     .sqrt();
                 let d = self.pos_upper_bound.x - self.pos_lower_bound.x; // TODO FIXME why only x?
-                if d / r <= s_theta {
+                const S_THETA: f64 = 0.9;
+                if d / r <= S_THETA {
                     // THE HEART OF THE ALGORITHM
                     // self.too_close = false;
-                    let k = gamma * self.mass / (r * r * r);
+                    let k = GAMMA * self.mass / (r * r * r);
                     let acc = k * (self.mass_center - body.pos);
                     return acc;
                 } else {
@@ -115,25 +109,23 @@ impl Node {
 
     // Calculate the accelleration caused by gravitaion of p2 on p1.
     fn calcAcc(&self, body1: Body, body2: Body) -> Vec2 {
-        let zeroAcc = Vec2::new(0.0, 0.0);
         if body1.pos == body2.pos {
             // same body
-            return zeroAcc;
+            return Vec2::new(0.0, 0.0);
         }
 
-        let result = body1.computeForce(&body2, gamma);
-        result // valid
+        return body1.compute_force(&body2, GAMMA);
     }
 
     fn getQuadrant(&self, x: f64, y: f64) -> usize {
         if x <= self.center.x && y <= self.center.y {
-            return Quadrant::SouthWest;
+            return Quadrant::SOUTH_WEST;
         } else if x <= self.center.x && y >= self.center.y {
-            return Quadrant::NorthWest;
+            return Quadrant::NORTH_WEST;
         } else if x >= self.center.x && y >= self.center.y {
-            return Quadrant::NorthEast;
+            return Quadrant::NORTH_EAST;
         } else if x >= self.center.x && y <= self.center.y {
-            return Quadrant::SouthEast;
+            return Quadrant::SOUTH_EAST;
         }
         unreachable!();
         //Quadrant::INVALID
@@ -152,7 +144,7 @@ impl Node {
                         Some(node) => {
                             node.computeMassDistribution();
                             self.mass += node.mass;
-                            self.mass_center += (node.mass_center * node.mass);
+                            self.mass_center += node.mass_center * node.mass;
                         }
                         None => {}
                     }
@@ -160,14 +152,14 @@ impl Node {
                 self.mass_center /= self.mass;
             }
             Some(NestedBody::Single(data)) => {
-                self.mass = data.m;
+                self.mass = data.mass;
                 self.mass_center = data.pos;
             }
         }
         self.mass_center
     }
 
-    fn insertParticle(&mut self, body: Body, level: u32) {
+    fn insertParticle(&mut self, body: Body) {
         let quad = self.getQuadrant(body.pos.x, body.pos.y);
         if body.pos.x < self.pos_lower_bound.x
             || body.pos.x > self.pos_upper_bound.x
@@ -179,10 +171,14 @@ impl Node {
 
         let getNewBounds = |quad, lower: Vec2, center: Vec2, upper: Vec2| -> (Vec2, Vec2) {
             match quad {
-                Quadrant::SouthWest => (lower, center),
-                Quadrant::NorthWest => (Vec2::new(lower.x, center.y), Vec2::new(center.x, upper.y)),
-                Quadrant::NorthEast => (center, upper),
-                Quadrant::SouthEast => (Vec2::new(center.x, lower.y), Vec2::new(upper.x, center.y)),
+                Quadrant::SOUTH_WEST => (lower, center),
+                Quadrant::NORTH_WEST => {
+                    (Vec2::new(lower.x, center.y), Vec2::new(center.x, upper.y))
+                }
+                Quadrant::NORTH_EAST => (center, upper),
+                Quadrant::SOUTH_EAST => {
+                    (Vec2::new(center.x, lower.y), Vec2::new(upper.x, center.y))
+                }
                 _ => unreachable!(),
             }
         };
@@ -192,7 +188,7 @@ impl Node {
                 self.nested = Some(NestedBody::Single(body));
             }
             Some(NestedBody::Multiple(data)) => match &mut data[quad] {
-                Some(node) => node.insertParticle(body, level + 1),
+                Some(node) => node.insertParticle(body),
                 None => {
                     let (lower, upper) = getNewBounds(
                         quad,
@@ -232,7 +228,7 @@ impl Node {
                 } else {
                     match &mut quads[quad] {
                         Some(node) => {
-                            node.insertParticle(body, level + 1);
+                            node.insertParticle(body);
                         }
                         _ => unreachable!("we allocated node with single body few lines above"),
                     }
@@ -265,18 +261,13 @@ impl ModelNBody {
     }
 
     fn buildTree(&mut self) {
-        // Reset the quadtree, make sure only particles inside the roi
-        // are handled. The renegade ones may live long and prosper
-        // outside my simulation
         self.tree = Node::default();
         self.tree.pos_upper_bound = self.center.add_scalar(self.roi);
         self.tree.pos_lower_bound = self.center.add_scalar(-self.roi);
         self.tree.center = (self.tree.pos_upper_bound + self.tree.pos_lower_bound) / 2.0;
 
-        let mut u = 0;
         for body in &self.bodies {
-            self.tree.insertParticle(*body, 0);
-            u += 1;
+            self.tree.insertParticle(*body);
         }
 
         self.center = self.tree.computeMassDistribution();
@@ -303,7 +294,7 @@ impl ModelNBody {
 
         let get_orbital_velocity = |pos1: Vec2, pos2: Vec2, m1: f64| {
             let dist: f64 = (pos1 - pos2).dot(&(pos1 - pos2)).sqrt();
-            let v = (gamma * m1 / dist).sqrt();
+            let v = (GAMMA * m1 / dist).sqrt();
             return Vec2::new((pos1.y - pos2.y) / dist * v, -(pos1.x - pos2.x) / dist * v);
         };
 
@@ -319,9 +310,9 @@ impl ModelNBody {
         // second black hole
         {
             let pos = Vec2::new(10.0, 10.0);
-            let vel = get_orbital_velocity(self.bodies[0].pos, pos, self.bodies[0].m) * 0.9;
+            let vel = get_orbital_velocity(self.bodies[0].pos, pos, self.bodies[0].mass) * 0.9;
             add_body(
-                Mass(self.bodies[0].m / 10.0),
+                Mass(self.bodies[0].mass / 10.0),
                 pos,
                 vel,
                 Radius(0.5),
@@ -337,7 +328,7 @@ impl ModelNBody {
             let a = 2.0 * std::f64::consts::PI * rng.gen_range(0.0..1.0);
             let mass = Mass(0.03 + 20.0 * rng.gen_range(0.0..1.0));
             let pos = Vec2::new(r * a.sin(), r * a.cos());
-            let vel = get_orbital_velocity(self.bodies[0].pos, pos, self.bodies[0].m);
+            let vel = get_orbital_velocity(self.bodies[0].pos, pos, self.bodies[0].mass);
 
             add_body(mass, pos, vel, Radius(0.05), &mut self.bodies);
 
@@ -349,7 +340,7 @@ impl ModelNBody {
         }
 
         // add second galaxy
-        for i in 4001..self.particle_num {
+        for _ in 4001..self.particle_num {
             let rad = 3.0;
             let r = 0.1 + 0.8 * (rad * rng.gen_range(0.0..1.0));
             let a = 2.0 * std::f64::consts::PI * rng.gen_range(0.0..1.0);
@@ -358,7 +349,7 @@ impl ModelNBody {
                 self.bodies[1].pos.x + r * a.sin(),
                 self.bodies[1].pos.y + r * a.cos(),
             );
-            let vel = get_orbital_velocity(self.bodies[1].pos, pos, self.bodies[1].m)
+            let vel = get_orbital_velocity(self.bodies[1].pos, pos, self.bodies[1].mass)
                 + self.bodies[1].vel;
             add_body(mass, pos, vel, Radius(0.05), &mut self.bodies);
 
@@ -393,8 +384,8 @@ impl ModelNBody {
     }
 }
 
-// taken from paper MATHEMATICAL MODEL FOR THE 0.5 BILLION YEARS AGED SUN
-const ApproximationsADB6: [f64; 6] = [
+// taken from paper 'MATHEMATICAL MODEL FOR THE 0.5 BILLION YEARS AGED SUN'
+const APPROXIMATIONS_ADB6: [f64; 6] = [
     4277.0 / 1440.0,
     -7923.0 / 1440.0,
     9982.0 / 1440.0,
@@ -403,6 +394,8 @@ const ApproximationsADB6: [f64; 6] = [
     -475.0 / 1440.0,
 ];
 
+// six step adams-bashforth integration method
+// https://web.mit.edu/10.001/Web/Course_Notes/Differential_Equations_Notes/node6.html
 struct IntegratorADB6 {
     dimensions: usize,
     timestep: f64,
@@ -424,25 +417,29 @@ impl IntegratorADB6 {
             ],
         }
     }
-    fn singleStep(&mut self, model: &mut ModelNBody) {
+    fn singleStep(&mut self, dt: f64, model: &mut ModelNBody) {
         for i in 0..self.dimensions {
-            model.bodies[i].pos += self.timestep
-                * (ApproximationsADB6[0] * self.data[5][i].pos
-                    + ApproximationsADB6[1] * self.data[4][i].pos
-                    + ApproximationsADB6[2] * self.data[3][i].pos
-                    + ApproximationsADB6[3] * self.data[2][i].pos
-                    + ApproximationsADB6[4] * self.data[1][i].pos
-                    + ApproximationsADB6[5] * self.data[0][i].pos);
-            model.bodies[i].vel += self.timestep
-                * (ApproximationsADB6[0] * self.data[5][i].vel
-                    + ApproximationsADB6[1] * self.data[4][i].vel
-                    + ApproximationsADB6[2] * self.data[3][i].vel
-                    + ApproximationsADB6[3] * self.data[2][i].vel
-                    + ApproximationsADB6[4] * self.data[1][i].vel
-                    + ApproximationsADB6[5] * self.data[0][i].vel);
+            model.bodies[i].pos += dt
+                * (APPROXIMATIONS_ADB6[0] * self.data[5][i].pos
+                    + APPROXIMATIONS_ADB6[1] * self.data[4][i].pos
+                    + APPROXIMATIONS_ADB6[2] * self.data[3][i].pos
+                    + APPROXIMATIONS_ADB6[3] * self.data[2][i].pos
+                    + APPROXIMATIONS_ADB6[4] * self.data[1][i].pos
+                    + APPROXIMATIONS_ADB6[5] * self.data[0][i].pos);
+            model.bodies[i].vel += dt
+                * (APPROXIMATIONS_ADB6[0] * self.data[5][i].vel
+                    + APPROXIMATIONS_ADB6[1] * self.data[4][i].vel
+                    + APPROXIMATIONS_ADB6[2] * self.data[3][i].vel
+                    + APPROXIMATIONS_ADB6[3] * self.data[2][i].vel
+                    + APPROXIMATIONS_ADB6[4] * self.data[1][i].vel
+                    + APPROXIMATIONS_ADB6[5] * self.data[0][i].vel);
             for j in 0..5 {
                 self.data[j][i] = self.data[j + 1][i];
             }
+        }
+        for i in 0..self.dimensions {
+            self.data[5][i].pos = model.bodies[i].vel;
+            self.data[5][i].vel = model.bodies[i].acc;
         }
     }
 
@@ -524,13 +521,8 @@ impl NBodyWnd {
         obj
     }
 
-    pub fn render(&mut self) {
-        self.integrator.singleStep(&mut self.model);
+    pub fn render(&mut self, dt: f64) {
+        self.integrator.singleStep(dt, &mut self.model);
         self.model.eval();
-        // TODO FIXME cover this
-        for i in 0..self.integrator.dimensions {
-            self.integrator.data[5][i].pos = self.model.bodies[i].vel;
-            self.integrator.data[5][i].vel = self.model.bodies[i].acc;
-        }
     }
 }

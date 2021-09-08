@@ -36,8 +36,8 @@ impl ThreeBody {
         let O = body.pos;
         let X = body.pos + 0.5 * body.vel;
 
-        renderer.PlotCircle(body.pos.x, body.pos.y, body.r);
-        renderer.PlotLine(O.x, O.y, X.x, X.y);
+        renderer.plot_circle(body.pos.x, body.pos.y, body.radius);
+        renderer.plot_line(O.x, O.y, X.x, X.y);
 
         let mut a = O - X;
         a.normalize_mut();
@@ -45,9 +45,9 @@ impl ThreeBody {
         let b = Vec2::new(a.y, -a.x);
 
         renderer
-            .PlotLine(X.x, X.y, X.x + a.x + a.x, X.y + a.y + b.y);
+            .plot_line(X.x, X.y, X.x + a.x + a.x, X.y + a.y + b.y);
         renderer
-            .PlotLine(X.x, X.y, X.x + a.x - b.x, X.y + a.y - b.y);
+            .plot_line(X.x, X.y, X.x + a.x - b.x, X.y + a.y - b.y);
     }
 }
 
@@ -59,25 +59,25 @@ impl Scenario for ThreeBody {
                     continue;
                 } else if i < j {
                     let (left, right) = self.solarSystem.split_at_mut(j);
-                    left[i].PulledBy(&right[0], self.G);
+                    left[i].pull_by(&right[0], self.G);
                 } else {
                     let (left, right) = self.solarSystem.split_at_mut(i);
-                    right[0].PulledBy(&left[j], self.G);
+                    right[0].pull_by(&left[j], self.G);
                 }
             }
         }
 
         for i in 0..self.solarSystem.len() {
-            self.solarSystem[i].Update(dt);
+            self.solarSystem[i].process_forces(dt);
         }
     }
 
     fn draw(&self, renderer : &mut dyn Screen) {
-        renderer.Clear();
+        renderer.clear();
         for i in 0..self.solarSystem.len() {
             self.plot_body(renderer, self.solarSystem[i]);
         }
-        renderer.Draw();
+        renderer.draw();
     }
 }
 

@@ -1,5 +1,4 @@
-use crate::screen::*;
-
+use crate::screen::{Point, TextOutputter, Screen};
 use std::io::{self, Write};
 
 const WIDTH: usize = 950;
@@ -26,15 +25,16 @@ impl TextOutputter for TerminalOutputer {
         }
     }
 
-    fn write(&mut self, buf : &[u8]) {
+    fn write(&mut self, buf: &[u8]) {
         let mut out = io::stdout();
         let starting_line = 0;
         let go_to_line_ansi_esacpe_code = format!("{esc}[{};1H", starting_line, esc = 27 as char);
-        out.write_all(go_to_line_ansi_esacpe_code.as_bytes());
-        out.write_all(buf);
-        out.flush();
+        out.write_all(go_to_line_ansi_esacpe_code.as_bytes())
+            .expect("failed to write ansi code");
+        out.write_all(buf).expect("failed to write buf");
+        out.flush().expect("failed to flush");
     }
-    fn width(&self) -> usize  {
+    fn width(&self) -> usize {
         self.width
     }
     fn height(&self) -> usize {
@@ -52,7 +52,6 @@ impl TerminalOutputer {
     }
 }
 
-struct Point(i32, i32);
 pub struct Zoom(pub f64);
 
 pub struct TextRender {
@@ -65,7 +64,6 @@ pub struct TextRender {
     frame: Vec<u8>,
 }
 
-
 impl TextRender {
     pub fn new(z: Zoom) -> TextRender {
         let mut obj = TextRender {
@@ -77,8 +75,8 @@ impl TextRender {
             output: Box::new(TerminalOutputer::new()),
             frame: Vec::new(),
         };
-        obj.Setup();
-        obj.Clear();
+        obj.setup();
+        obj.clear();
         obj
     }
     fn brightness(&self, count: usize, max: usize) -> u8 {
@@ -92,7 +90,7 @@ impl TextRender {
         }
     }
 
-    fn Setup(&mut self) {
+    fn setup(&mut self) {
         self.output.setup();
     }
 
@@ -105,7 +103,7 @@ impl TextRender {
         let w = xx as i32;
         Point(h, w)
     }
-    fn drawPoint(&mut self, point: Point) {
+    fn draw_point(&mut self, point: Point) {
         let (x, y) = (point.0, point.1);
         if x < 0 || y < 0 || x >= HEIGHT as i32 || y >= WIDTH as i32 {
             return;
@@ -113,67 +111,67 @@ impl TextRender {
         self.canvas[x as usize][y as usize] = true;
     }
 
-    fn drawBoldPoint(&mut self, point: Point) {
+    fn draw_bold_point(&mut self, point: Point) {
         let (x, y) = (point.0, point.1);
         for i in x - 1..=x + 1 {
             for j in y - 1..=y + 1 {
-                self.drawPoint(Point(x, y));
+                self.draw_point(Point(i, j));
             }
         }
     }
 
     // Bresenham's line algorithm
-    fn drawLine(&mut self, a: Point, b: Point) {
+    fn draw_line(&mut self, a: Point, b: Point) {
         // sorting
-        let mut fromPoint = a;
-        let mut toPoint = b;
-        if fromPoint.0 > toPoint.0 {
-            std::mem::swap(&mut fromPoint, &mut toPoint);
+        let mut from_point = a;
+        let mut to_point = b;
+        if from_point.0 > to_point.0 {
+            std::mem::swap(&mut from_point, &mut to_point);
         }
 
         // algorithm
-        if fromPoint.1 == toPoint.1 {
-            for i in fromPoint.0..=toPoint.0 {
-                self.drawBoldPoint(Point(i, fromPoint.1));
+        if from_point.1 == to_point.1 {
+            for i in from_point.0..=to_point.0 {
+                self.draw_bold_point(Point(i, from_point.1));
             }
             return;
         }
-        if fromPoint.0 == toPoint.0 {
-            if toPoint.1 < fromPoint.1 {
-                std::mem::swap(&mut fromPoint.1, &mut toPoint.1);
+        if from_point.0 == to_point.0 {
+            if to_point.1 < from_point.1 {
+                std::mem::swap(&mut from_point.1, &mut to_point.1);
             }
 
-            for i in fromPoint.1..=toPoint.1 {
-                self.drawBoldPoint(Point(fromPoint.0, i));
+            for i in from_point.1..=to_point.1 {
+                self.draw_bold_point(Point(from_point.0, i));
             }
             return;
         }
 
-        let isGradientSoft = (toPoint.1 - fromPoint.1).abs() < (toPoint.0 - fromPoint.0).abs();
-        if isGradientSoft {
-            if fromPoint.0 > fromPoint.1 {
-                self.drawLineLow(toPoint, fromPoint);
+        let is_gradient_soft = (to_point.1 - from_point.1).abs() < (to_point.0 - from_point.0).abs();
+        if is_gradient_soft {
+            if from_point.0 > from_point.1 {
+                self.draw_line_low(to_point, from_point);
             } else {
-                self.drawLineLow(fromPoint, toPoint);
+                self.draw_line_low(from_point, to_point);
             }
         } else {
-            if fromPoint.1 > toPoint.1 {
-                self.drawLineHigh(toPoint, fromPoint);
+            if from_point.1 > to_point.1 {
+                self.draw_line_high(to_point, from_point);
             } else {
-                self.drawLineHigh(fromPoint, toPoint);
+                self.draw_line_high(from_point, to_point);
             }
         }
     }
 
     // Xialin Wu's line algorithm. Anti-aliased // TODO check correctness once pixel rendering is
     // available
-    fn drawSmoothLine(&mut self, a: Point, b: Point) {
+    fn draw_smooth_line(&mut self, a: Point, b: Point) {
         let dx = b.0 - a.0;
         let dy = b.1 - a.1;
         let steep = dx.abs() < dy.abs();
 
-        let mut fromPoint = a;
-        let mut toPoint = b;
+        let mut from_point = a;
+        let mut to_point = b;
 
         let p = |x: i32, y: i32| {
             if steep {
@@ -184,11 +182,11 @@ impl TextRender {
         };
 
         if steep {
-            std::mem::swap(&mut fromPoint.0, &mut fromPoint.1);
-            std::mem::swap(&mut toPoint.0, &mut toPoint.1);
+            std::mem::swap(&mut from_point.0, &mut from_point.1);
+            std::mem::swap(&mut to_point.0, &mut to_point.1);
         }
-        if toPoint.0 < fromPoint.0 {
-            std::mem::swap(&mut fromPoint, &mut toPoint);
+        if to_point.0 < from_point.0 {
+            std::mem::swap(&mut from_point, &mut to_point);
         }
 
         fn _rfpart(num: f64) -> f64 {
@@ -200,7 +198,7 @@ impl TextRender {
         }
 
         let grad = dy as f64 / dx as f64;
-        let mut intery = fromPoint.1 as f64 + _rfpart(fromPoint.0 as f64) * grad;
+        let mut intery = from_point.1 as f64 + _rfpart(from_point.0 as f64) * grad;
 
         let mut draw_endpoint = |point: &Point| -> i32 {
             let (x, y) = (point.0, point.1);
@@ -212,39 +210,39 @@ impl TextRender {
             let px = xend as i32;
             let py = yend as i32;
 
-            self.drawPoint(p(px, py));
-            self.drawPoint(p(px, py + 1));
+            self.draw_point(p(px, py));
+            self.draw_point(p(px, py + 1));
 
             px
         };
 
-        let xstart = draw_endpoint(&p(fromPoint.0, fromPoint.1)) + 1;
-        let xend = draw_endpoint(&p(toPoint.0, toPoint.1));
+        let xstart = draw_endpoint(&p(from_point.0, from_point.1)) + 1;
+        let xend = draw_endpoint(&p(to_point.0, to_point.1));
 
         for x in xstart..xend {
             let y = intery as i32;
             //let alpha = _rfpart(intery);
-            self.drawPoint(p(x, y));
-            self.drawPoint(p(x, y + 1));
+            self.draw_point(p(x, y));
+            self.draw_point(p(x, y + 1));
             intery += grad;
         }
     }
 
-    fn drawRectangle(&mut self, fromPoint: Point, toPoint: Point) {
-        let minX = std::cmp::min(fromPoint.0, toPoint.0);
-        let maxX = std::cmp::max(fromPoint.0, toPoint.0);
-        let minY = std::cmp::min(fromPoint.1, toPoint.1);
-        let maxY = std::cmp::max(fromPoint.1, toPoint.1);
+    fn draw_rectangle(&mut self, from_point: Point, to_point: Point) {
+        let minX = std::cmp::min(from_point.0, to_point.0);
+        let maxX = std::cmp::max(from_point.0, to_point.0);
+        let minY = std::cmp::min(from_point.1, to_point.1);
+        let maxY = std::cmp::max(from_point.1, to_point.1);
 
         for x in minX..=maxX {
             for y in minY..=maxY {
-                self.drawPoint(Point(x, y));
+                self.draw_point(Point(x, y));
             }
         }
     }
 
-    fn drawLineLow(&mut self, fromPoint: Point, toPoint: Point) {
-        let (x0, y0, x1, y1) = (fromPoint.0, fromPoint.1, toPoint.0, toPoint.1);
+    fn draw_line_low(&mut self, from_point: Point, to_point: Point) {
+        let (x0, y0, x1, y1) = (from_point.0, from_point.1, to_point.0, to_point.1);
         let dx = x1 - x0;
         let (dy, yi) = if y1 >= y0 {
             (y1 - y0, 1)
@@ -256,7 +254,7 @@ impl TextRender {
         let mut y = y0;
 
         for x in x0..=x1 {
-            self.drawBoldPoint(Point(x, y));
+            self.draw_bold_point(Point(x, y));
             if D > 0 {
                 y += yi;
                 D -= 2 * dx;
@@ -265,8 +263,8 @@ impl TextRender {
         }
     }
 
-    fn drawLineHigh(&mut self, fromPoint: Point, toPoint: Point) {
-        let (x0, y0, x1, y1) = (fromPoint.0, fromPoint.1, toPoint.0, toPoint.1);
+    fn draw_line_high(&mut self, from_point: Point, to_point: Point) {
+        let (x0, y0, x1, y1) = (from_point.0, from_point.1, to_point.0, to_point.1);
         let dy = y1 - y0;
         let (dx, xi) = if x1 >= x0 {
             (x1 - x0, 1)
@@ -278,7 +276,7 @@ impl TextRender {
         let mut x = x0;
 
         for y in y0..=y1 {
-            self.drawBoldPoint(Point(x, y));
+            self.draw_bold_point(Point(x, y));
             if D > 0 {
                 x += xi;
                 D -= 2 * dy;
@@ -289,7 +287,7 @@ impl TextRender {
 }
 
 impl Screen for TextRender {
-    fn Clear(&mut self) {
+    fn clear(&mut self) {
         for i in 0..HEIGHT {
             for j in 0..WIDTH {
                 self.canvas[i][j] = false;
@@ -297,18 +295,18 @@ impl Screen for TextRender {
         }
     }
 
-    fn PlotPoint(&mut self, x: f64, y: f64) {
+    fn plot_point(&mut self, x: f64, y: f64) {
         let point = self.transform(x, y);
-        self.drawPoint(point);
+        self.draw_point(point);
     }
 
-    fn PlotLine(&mut self, x1: f64, y1: f64, x2: f64, y2: f64) {
+    fn plot_line(&mut self, x1: f64, y1: f64, x2: f64, y2: f64) {
         let p1 = self.transform(x1, y1);
         let p2 = self.transform(x2, y2);
-        self.drawLine(p1, p2);
+        self.draw_line(p1, p2);
     }
 
-    fn PlotCircle(&mut self, x: f64, y: f64, r: f64) {
+    fn plot_circle(&mut self, x: f64, y: f64, r: f64) {
         let p1 = self.transform(x - r, y + r);
         let p2 = self.transform(x + r, y - r);
 
@@ -317,52 +315,48 @@ impl Screen for TextRender {
                 let xt = (j as f64 - WIDTH as f64 / 2.0) / self.zoom + self.x as f64;
                 let yt = (HEIGHT as f64 / 2.0 - 1.0 - i as f64) / self.zoom + self.y as f64;
                 let radius2 = (xt - x) * (xt - x) + (yt - y) * (yt - y);
-                let isInCircle = radius2 <= r * r;
-                if isInCircle {
-                    self.drawPoint(Point(i, j));
+                let is_in_circle = radius2 <= r * r;
+                if is_in_circle {
+                    self.draw_point(Point(i, j));
                 }
             }
         }
     }
 
-    fn PlotRectangle(&mut self, x1: f64, y1: f64, x2: f64, y2: f64) {
+    fn plot_rectangle(&mut self, x1: f64, y1: f64, x2: f64, y2: f64) {
         let p1 = self.transform(x1, y1);
         let p2 = self.transform(x2, y2);
-        self.drawRectangle(p1, p2);
+        self.draw_rectangle(p1, p2);
     }
 
-    fn Position(&mut self, x: f64, y: f64) {
+    fn position(&mut self, x: f64, y: f64) {
         self.x = x;
         self.y = y;
     }
 
-    fn Zoom(&mut self, zoom: f64) {
+    fn set_zoom(&mut self, zoom: f64) {
         self.zoom = zoom;
     }
 
-    fn TextOutputter(&mut self, output : Box<dyn TextOutputter>) {
-        self.output = output;
-    }
-
-    fn Draw(&mut self) {
+    fn draw(&mut self) {
         let W = self.output.width();
         let H = self.output.height();
         self.frame.resize(W * H, ' ' as u8);
 
-        let compressedWidth = WIDTH / W;
-        let compressedHeight = HEIGHT / H;
+        let compressed_width = WIDTH / W;
+        let compressed_height = HEIGHT / H;
 
-        for i in 0..std::cmp::min(H, HEIGHT / compressedHeight) {
-            for j in 0..std::cmp::min(W, WIDTH / compressedWidth) {
+        for i in 0..std::cmp::min(H, HEIGHT / compressed_height) {
+            for j in 0..std::cmp::min(W, WIDTH / compressed_width) {
                 let mut count = 0;
-                for k in 0..compressedHeight {
-                    for l in 0..compressedWidth {
+                for k in 0..compressed_height {
+                    for l in 0..compressed_width {
                         count +=
-                            self.canvas[i * compressedHeight + k][j * compressedWidth + l] as usize;
+                            self.canvas[i * compressed_height + k][j * compressed_width + l] as usize;
                     }
                 }
                 let idx = i * W + j as usize;
-                self.frame[idx] = self.brightness(count, compressedHeight * compressedWidth);
+                self.frame[idx] = self.brightness(count, compressed_height * compressed_width);
             }
         }
 

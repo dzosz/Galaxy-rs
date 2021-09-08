@@ -1,5 +1,4 @@
-use galaxyy::scenario::{Scenario, ThreeBody};
-use galaxyy::screen::{Screen, EguiScreen};
+use galaxyy::screen::EguiScreen;
 
 fn main() {
     let app = EguiScreen::default();
