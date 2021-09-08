@@ -10,7 +10,7 @@ const GAMMA_SI: f64 = 6.67428e-11;
 const GAMMA: f64 =
     GAMMA_SI / (PC_IN_M * PC_IN_M * PC_IN_M) * MASS_SUN * (365.25 * 86400.0) * (365.25 * 86400.0);
 
-mod Quadrant {
+mod quadrant {
     pub const NORTH_WEST: usize = 0;
     pub const NORTH_EAST: usize = 1;
     pub const SOUTH_WEST: usize = 2;
@@ -62,8 +62,8 @@ impl Node {
         obj
     }
 
-    fn calcForce(&self, body: Body) -> Vec2 {
-        let acc = self.calcTreeForce(body);
+    fn calculate_force(&self, body: Body) -> Vec2 {
+        let acc = self.calculate_force_on_tree(body);
         // calculate the force from particles not in the barnes hut tree on particle p
         /*
         for (std::size_t i=0; i<s_renegades.size(); ++i)
@@ -75,9 +75,9 @@ impl Node {
         acc
     }
     // Compute the force acting from this node and it's child to a particle p
-    fn calcTreeForce(&self, body: Body) -> Vec2 {
+    fn calculate_force_on_tree(&self, body: Body) -> Vec2 {
         match self.nested.as_ref().unwrap() {
-            NestedBody::Single(body2) => self.calcAcc(body, *body2),
+            NestedBody::Single(body2) => self.calculate_acceleration(body, *body2),
             NestedBody::Multiple(data) => {
                 let r = (body.pos - self.mass_center)
                     .dot(&(body.pos - self.mass_center))
@@ -93,10 +93,10 @@ impl Node {
                 } else {
                     // self.too_close = true;
                     let mut acc = Vec2::new(0.0, 0.0);
-                    for i in 0..Quadrant::MAX {
+                    for i in 0..quadrant::MAX {
                         match data[i].as_ref() {
                             Some(node) => {
-                                acc += node.calcTreeForce(body);
+                                acc += node.calculate_force_on_tree(body);
                             }
                             None => {}
                         }
@@ -107,8 +107,7 @@ impl Node {
         }
     }
 
-    // Calculate the accelleration caused by gravitaion of p2 on p1.
-    fn calcAcc(&self, body1: Body, body2: Body) -> Vec2 {
+    fn calculate_acceleration(&self, body1: Body, body2: Body) -> Vec2 {
         if body1.pos == body2.pos {
             // same body
             return Vec2::new(0.0, 0.0);
@@ -117,21 +116,21 @@ impl Node {
         return body1.compute_force(&body2, GAMMA);
     }
 
-    fn getQuadrant(&self, x: f64, y: f64) -> usize {
+    fn get_quadrant(&self, x: f64, y: f64) -> usize {
         if x <= self.center.x && y <= self.center.y {
-            return Quadrant::SOUTH_WEST;
+            return quadrant::SOUTH_WEST;
         } else if x <= self.center.x && y >= self.center.y {
-            return Quadrant::NORTH_WEST;
+            return quadrant::NORTH_WEST;
         } else if x >= self.center.x && y >= self.center.y {
-            return Quadrant::NORTH_EAST;
+            return quadrant::NORTH_EAST;
         } else if x >= self.center.x && y <= self.center.y {
-            return Quadrant::SOUTH_EAST;
+            return quadrant::SOUTH_EAST;
         }
         unreachable!();
-        //Quadrant::INVALID
+        //quadrant::INVALID
     }
 
-    fn computeMassDistribution(&mut self) -> Vec2 {
+    fn compute_mass_distribution(&mut self) -> Vec2 {
         match &mut self.nested {
             None => {
                 unreachable!();
@@ -139,10 +138,10 @@ impl Node {
             Some(NestedBody::Multiple(data)) => {
                 assert!(self.mass == 0.0);
                 assert!(self.mass_center == Vec2::new(0.0, 0.0));
-                for i in 0..Quadrant::MAX {
+                for i in 0..quadrant::MAX {
                     match data[i].as_mut() {
                         Some(node) => {
-                            node.computeMassDistribution();
+                            node.compute_mass_distribution();
                             self.mass += node.mass;
                             self.mass_center += node.mass_center * node.mass;
                         }
@@ -159,8 +158,8 @@ impl Node {
         self.mass_center
     }
 
-    fn insertParticle(&mut self, body: Body) {
-        let quad = self.getQuadrant(body.pos.x, body.pos.y);
+    fn insert_particle(&mut self, body: Body) {
+        let quad = self.get_quadrant(body.pos.x, body.pos.y);
         if body.pos.x < self.pos_lower_bound.x
             || body.pos.x > self.pos_upper_bound.x
             || body.pos.y < self.pos_lower_bound.y
@@ -169,28 +168,29 @@ impl Node {
             return;
         }
 
-        let getNewBounds = |quad, lower: Vec2, center: Vec2, upper: Vec2| -> (Vec2, Vec2) {
-            match quad {
-                Quadrant::SOUTH_WEST => (lower, center),
-                Quadrant::NORTH_WEST => {
-                    (Vec2::new(lower.x, center.y), Vec2::new(center.x, upper.y))
+        let get_new_quadrant_bounds =
+            |quad, lower: Vec2, center: Vec2, upper: Vec2| -> (Vec2, Vec2) {
+                match quad {
+                    quadrant::SOUTH_WEST => (lower, center),
+                    quadrant::NORTH_WEST => {
+                        (Vec2::new(lower.x, center.y), Vec2::new(center.x, upper.y))
+                    }
+                    quadrant::NORTH_EAST => (center, upper),
+                    quadrant::SOUTH_EAST => {
+                        (Vec2::new(center.x, lower.y), Vec2::new(upper.x, center.y))
+                    }
+                    _ => unreachable!(),
                 }
-                Quadrant::NORTH_EAST => (center, upper),
-                Quadrant::SOUTH_EAST => {
-                    (Vec2::new(center.x, lower.y), Vec2::new(upper.x, center.y))
-                }
-                _ => unreachable!(),
-            }
-        };
+            };
 
         match &mut self.nested {
             None => {
                 self.nested = Some(NestedBody::Single(body));
             }
             Some(NestedBody::Multiple(data)) => match &mut data[quad] {
-                Some(node) => node.insertParticle(body),
+                Some(node) => node.insert_particle(body),
                 None => {
-                    let (lower, upper) = getNewBounds(
+                    let (lower, upper) = get_new_quadrant_bounds(
                         quad,
                         self.pos_lower_bound,
                         self.center,
@@ -207,8 +207,8 @@ impl Node {
                     panic!("two same positions"); // TODO add to renegades?
                 }
                 // add previosuly existing body
-                let prev_quad = self.getQuadrant(prev_body.pos.x, prev_body.pos.y);
-                let (lower, upper) = getNewBounds(
+                let prev_quad = self.get_quadrant(prev_body.pos.x, prev_body.pos.y);
+                let (lower, upper) = get_new_quadrant_bounds(
                     prev_quad,
                     self.pos_lower_bound,
                     self.center,
@@ -218,7 +218,7 @@ impl Node {
 
                 // add new body
                 if prev_quad != quad {
-                    let (lower, upper) = getNewBounds(
+                    let (lower, upper) = get_new_quadrant_bounds(
                         quad,
                         self.pos_lower_bound,
                         self.center,
@@ -228,7 +228,7 @@ impl Node {
                 } else {
                     match &mut quads[quad] {
                         Some(node) => {
-                            node.insertParticle(body);
+                            node.insert_particle(body);
                         }
                         _ => unreachable!("we allocated node with single body few lines above"),
                     }
@@ -260,28 +260,28 @@ impl ModelNBody {
         obj
     }
 
-    fn buildTree(&mut self) {
+    fn build_quadrant_tree(&mut self) {
         self.tree = Node::default();
         self.tree.pos_upper_bound = self.center.add_scalar(self.roi);
         self.tree.pos_lower_bound = self.center.add_scalar(-self.roi);
         self.tree.center = (self.tree.pos_upper_bound + self.tree.pos_lower_bound) / 2.0;
 
         for body in &self.bodies {
-            self.tree.insertParticle(*body);
+            self.tree.insert_particle(*body);
         }
 
-        self.center = self.tree.computeMassDistribution();
+        self.center = self.tree.compute_mass_distribution();
     }
 
     fn eval(&mut self) {
-        self.buildTree();
+        self.build_quadrant_tree();
 
         for i in 0..self.bodies.len() {
-            self.bodies[i].acc = self.tree.calcForce(self.bodies[i]);
+            self.bodies[i].acc = self.tree.calculate_force(self.bodies[i]);
         }
     }
 
-    fn initCollision(&mut self) {
+    fn init_collision(&mut self) {
         self.bodies.clear();
         self.bodies.reserve(self.particle_num);
 
@@ -417,7 +417,7 @@ impl IntegratorADB6 {
             ],
         }
     }
-    fn singleStep(&mut self, dt: f64, model: &mut ModelNBody) {
+    fn integrate(&mut self, dt: f64, model: &mut ModelNBody) {
         for i in 0..self.dimensions {
             model.bodies[i].pos += dt
                 * (APPROXIMATIONS_ADB6[0] * self.data[5][i].pos
@@ -443,7 +443,7 @@ impl IntegratorADB6 {
         }
     }
 
-    fn setInitialState(&mut self, model: &mut ModelNBody) {
+    fn set_initial_state(&mut self, model: &mut ModelNBody) {
         assert!(model.bodies.len() == self.dimensions);
         let initial = model.bodies.clone();
 
@@ -516,13 +516,13 @@ impl NBodyWnd {
             integrator: IntegratorADB6::new(5000, 100.0),
             model: ModelNBody::new(5000),
         };
-        obj.model.initCollision();
-        obj.integrator.setInitialState(&mut obj.model);
+        obj.model.init_collision();
+        obj.integrator.set_initial_state(&mut obj.model);
         obj
     }
 
     pub fn render(&mut self, dt: f64) {
-        self.integrator.singleStep(dt, &mut self.model);
+        self.integrator.integrate(dt, &mut self.model);
         self.model.eval();
     }
 }
