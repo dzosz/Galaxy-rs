@@ -39,12 +39,12 @@ impl epi::App for EguiScreen {
                     self.activeScenario = Box::new(SunEarthMoon::new());
                     self.dt = 1.0 / 100.0;
                 }
-                if ui.button("Collision").clicked() {
+                if ui.button("Galaxy Collision").clicked() {
                     self.renderer.set_zoom(5.0);
                     self.activeScenario = Box::new(Collision::new(20000));
                     self.dt = 1.0 / 40.0;
                 }
-                if ui.button("Collision2").clicked() {
+                if ui.button("Galaxy Collision BarnesHut").clicked() {
                     self.renderer.set_zoom(20.0);
                     self.activeScenario = Box::new(GalaxyCollisionBarnesHut::new());
                     self.dt = 100.0;
