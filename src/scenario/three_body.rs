@@ -45,7 +45,7 @@ impl ThreeBody {
         let b = Vec2::new(a.y, -a.x);
 
         renderer
-            .plot_line(X.x, X.y, X.x + a.x + a.x, X.y + a.y + b.y);
+            .plot_line(X.x, X.y, X.x + a.x + b.x, X.y + a.y + b.y);
         renderer
             .plot_line(X.x, X.y, X.x + a.x - b.x, X.y + a.y - b.y);
     }
