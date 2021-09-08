@@ -53,13 +53,13 @@ impl TerminalOutputer {
 }
 
 struct Point(i32, i32);
-pub struct Zoom(pub f32);
+pub struct Zoom(pub f64);
 
 pub struct TextRender {
     canvas: [[bool; WIDTH]; HEIGHT],
-    x: f32,
-    y: f32,
-    zoom: f32,
+    x: f64,
+    y: f64,
+    zoom: f64,
     _palette: i32,
     output: Box<dyn TextOutputter>,
     frame: Vec<u8>,
@@ -96,7 +96,7 @@ impl TextRender {
         self.output.setup();
     }
 
-    fn transform(&mut self, x: f32, y: f32) -> Point {
+    fn transform(&self, x: f64, y: f64) -> Point {
         // from world to screen coordinates
         let xx = ((x - self.x) * self.zoom) as i32 + (WIDTH as i32 / 2);
         let yy = ((y - self.y) * self.zoom) as i32 + (HEIGHT as i32 / 2);
@@ -191,23 +191,23 @@ impl TextRender {
             std::mem::swap(&mut fromPoint, &mut toPoint);
         }
 
-        fn _rfpart(num: f32) -> f32 {
+        fn _rfpart(num: f64) -> f64 {
             1.0 - _fpart(num)
         }
 
-        fn _fpart(num: f32) -> f32 {
-            num - (num as i32 as f32)
+        fn _fpart(num: f64) -> f64 {
+            num - (num as i32 as f64)
         }
 
-        let grad = dy as f32 / dx as f32;
-        let mut intery = fromPoint.1 as f32 + _rfpart(fromPoint.0 as f32) * grad;
+        let grad = dy as f64 / dx as f64;
+        let mut intery = fromPoint.1 as f64 + _rfpart(fromPoint.0 as f64) * grad;
 
         let mut draw_endpoint = |point: &Point| -> i32 {
             let (x, y) = (point.0, point.1);
             let xend = x; //.round();
-            let yend = y as f32 + grad * (xend - x) as f32;
+            let yend = y as f64 + grad * (xend - x) as f64;
 
-            //let xgap = _rfpart(x as f32 + 0.5);
+            //let xgap = _rfpart(x as f64 + 0.5);
             //let alpha = _rfpart(yend) * xgap;
             let px = xend as i32;
             let py = yend as i32;
@@ -297,25 +297,25 @@ impl Screen for TextRender {
         }
     }
 
-    fn PlotPoint(&mut self, x: f32, y: f32) {
+    fn PlotPoint(&mut self, x: f64, y: f64) {
         let point = self.transform(x, y);
         self.drawPoint(point);
     }
 
-    fn PlotLine(&mut self, x1: f32, y1: f32, x2: f32, y2: f32) {
+    fn PlotLine(&mut self, x1: f64, y1: f64, x2: f64, y2: f64) {
         let p1 = self.transform(x1, y1);
         let p2 = self.transform(x2, y2);
         self.drawLine(p1, p2);
     }
 
-    fn PlotCircle(&mut self, x: f32, y: f32, r: f32) {
+    fn PlotCircle(&mut self, x: f64, y: f64, r: f64) {
         let p1 = self.transform(x - r, y + r);
         let p2 = self.transform(x + r, y - r);
 
         for i in p1.0..=p2.0 {
             for j in p1.1..=p2.1 {
-                let xt = (j as f32 - WIDTH as f32 / 2.0) / self.zoom + self.x as f32;
-                let yt = (HEIGHT as f32 / 2.0 - 1.0 - i as f32) / self.zoom + self.y as f32;
+                let xt = (j as f64 - WIDTH as f64 / 2.0) / self.zoom + self.x as f64;
+                let yt = (HEIGHT as f64 / 2.0 - 1.0 - i as f64) / self.zoom + self.y as f64;
                 let radius2 = (xt - x) * (xt - x) + (yt - y) * (yt - y);
                 let isInCircle = radius2 <= r * r;
                 if isInCircle {
@@ -325,18 +325,18 @@ impl Screen for TextRender {
         }
     }
 
-    fn PlotRectangle(&mut self, x1: f32, y1: f32, x2: f32, y2: f32) {
+    fn PlotRectangle(&mut self, x1: f64, y1: f64, x2: f64, y2: f64) {
         let p1 = self.transform(x1, y1);
         let p2 = self.transform(x2, y2);
         self.drawRectangle(p1, p2);
     }
 
-    fn Position(&mut self, x: f32, y: f32) {
+    fn Position(&mut self, x: f64, y: f64) {
         self.x = x;
         self.y = y;
     }
 
-    fn Zoom(&mut self, zoom: f32) {
+    fn Zoom(&mut self, zoom: f64) {
         self.zoom = zoom;
     }
 

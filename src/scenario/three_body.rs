@@ -2,11 +2,11 @@ use crate::body::{Body, Mass, Radius};
 use crate::screen::Screen;
 use crate::scenario::Scenario;
 
-type Vec2 = nalgebra::Vector2<f32>;
+type Vec2 = nalgebra::Vector2<f64>;
 
 pub struct ThreeBody {
     solarSystem: [Body; 3],
-    G: f32,
+    G: f64,
 }
 
 impl ThreeBody {
@@ -52,7 +52,7 @@ impl ThreeBody {
 }
 
 impl Scenario for ThreeBody {
-    fn process(&mut self, dt : f32) {
+    fn process(&mut self, dt : f64) {
         for i in 0..self.solarSystem.len() {
             for j in 0..self.solarSystem.len() {
                 if i == j {

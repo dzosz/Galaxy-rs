@@ -5,6 +5,7 @@ authors = ["Anonymous", "DinoZ1729"]
 edition = "2018"
 description = "rust rewrite of three body ascii rendering project originally hosted by DinoZ1729"
 license = "GPL-3.0"
+#panic = "abort" # optimization, removes the “landing pads” that allow Rust to show a nice stack trace after a panic,
 
 [dependencies]
 terminal_size = "0.1.17"
@@ -20,6 +21,10 @@ path = "src/bin/Sun-Earth-Moon.rs"
 [[bin]]
 name = "collision"
 path = "src/bin/Collision.rs"
+
+[[bin]]
+name = "collision2"
+path = "src/bin/Collision2.rs"
 
 [[bin]]
 name = "threebody"

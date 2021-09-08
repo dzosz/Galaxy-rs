@@ -2,14 +2,14 @@ use crate::body::{Body, Mass, Radius};
 use crate::screen::Screen;
 use crate::scenario::Scenario;
 
-type Vec2 = nalgebra::Vector2<f32>;
+type Vec2 = nalgebra::Vector2<f64>;
 
 pub struct Collision {
     Centre1: Body,
     Bodies1: Vec<Body>,
     Centre2: Body,
     Bodies2: Vec<Body>,
-    G: f32,
+    G: f64,
 }
 
 /*
@@ -32,7 +32,7 @@ impl Collision {
 
         for i in 0..subobjects {
             let maxRadius = 30.0;
-            let theta = random(0.0, 2.0 * std::f32::consts::PI);
+            let theta = random(0.0, 2.0 * std::f64::consts::PI);
             let mut r = random(1.0, maxRadius);
             r = r * r / maxRadius;
 
@@ -55,7 +55,7 @@ impl Collision {
 
         for i in 0..subobjects {
             let maxRadius = 30.0;
-            let theta = random(0.0, 2.0 * std::f32::consts::PI);
+            let theta = random(0.0, 2.0 * std::f64::consts::PI);
 
             let mut r = random(1.0, maxRadius);
             r = r * r / maxRadius;
@@ -87,7 +87,7 @@ impl Collision {
 }
 
 impl Scenario for Collision {
-    fn process(&mut self, dt: f32) {
+    fn process(&mut self, dt: f64) {
         // centres attract each other
         self.Centre1.PulledBy(&self.Centre2, self.G);
         self.Centre2.PulledBy(&self.Centre1, self.G);
@@ -137,8 +137,8 @@ impl Scenario for Collision {
     }
 }
 
-fn random(low: f32, high: f32) -> f32 {
+fn random(low: f64, high: f64) -> f64 {
     let rand_max = 1.0;
-    low + rand::random::<f32>() / (rand_max / (high - low))
+    low + rand::random::<f64>() / (rand_max / (high - low))
 }
 

@@ -2,13 +2,13 @@ use crate::body::{Body, Mass, Radius};
 use crate::screen::Screen;
 use crate::scenario::Scenario;
 
-type Vec2 = nalgebra::Vector2<f32>;
+type Vec2 = nalgebra::Vector2<f64>;
 
 pub struct SunEarthMoon {
     Sun: Body,
     Earth: Body,
     Moon: Body,
-    G: f32,
+    G: f64,
 }
 
 impl SunEarthMoon {
@@ -40,7 +40,7 @@ impl SunEarthMoon {
     }
 }
 impl Scenario for SunEarthMoon {
-    fn process(&mut self, dt: f32) {
+    fn process(&mut self, dt: f64) {
         self.Moon.PulledBy(&self.Earth, self.G);
         self.Moon.PulledBy(&self.Sun, self.G);
         self.Earth.PulledBy(&self.Moon, self.G);
