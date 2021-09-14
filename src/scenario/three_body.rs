@@ -53,17 +53,12 @@ impl ThreeBody {
 
 impl Scenario for ThreeBody {
     fn process(&mut self, dt : f64) {
-        for i in 0..self.solarSystem.len() {
-            for j in 0..self.solarSystem.len() {
-                if i == j {
-                    continue;
-                } else if i < j {
-                    let (left, right) = self.solarSystem.split_at_mut(j);
-                    left[i].pull_by(&right[0], self.G);
-                } else {
-                    let (left, right) = self.solarSystem.split_at_mut(i);
-                    right[0].pull_by(&left[j], self.G);
-                }
+        for i in 0..(self.solarSystem.len()-1) {
+            for j in i+1..self.solarSystem.len() {
+                let (left, right) = self.solarSystem.split_at_mut(i+1);
+                let idx2 = j - i - 1;
+                left[i].pull_by(&right[idx2], self.G);
+                right[idx2].pull_by(&left[i], self.G);
             }
         }
 
